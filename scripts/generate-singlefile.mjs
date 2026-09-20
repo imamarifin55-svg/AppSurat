@@ -39,13 +39,24 @@ export function bundleSingleHtml() {
 
   // Write to dist
   const targetDist = path.join(distDir, 'agenda-surat-sekolah-singlefile.html');
-  fs.writeFileSync(targetDist, html, 'utf8');
+  try {
+    fs.writeFileSync(targetDist, html, 'utf8');
+  } catch (err) {
+    console.warn('Notice: Could not write singlefile to dist:', err);
+  }
 
   // Also write to public so Vite dev server can serve /agenda-surat-sekolah-singlefile.html directly
-  const targetPublic = path.join(publicDir, 'agenda-surat-sekolah-singlefile.html');
-  fs.writeFileSync(targetPublic, html, 'utf8');
+  try {
+    if (!fs.existsSync(publicDir)) {
+      fs.mkdirSync(publicDir, { recursive: true });
+    }
+    const targetPublic = path.join(publicDir, 'agenda-surat-sekolah-singlefile.html');
+    fs.writeFileSync(targetPublic, html, 'utf8');
+  } catch (err) {
+    console.warn('Notice: Could not write singlefile to public (safe to ignore in production):', err);
+  }
 
-  console.log(`Standalone HTML file generated at: ${targetDist} and ${targetPublic} (${Math.round(html.length / 1024)} KB)`);
+  console.log(`Standalone HTML file generated at: ${targetDist} (${Math.round(html.length / 1024)} KB)`);
 }
 
 bundleSingleHtml();
