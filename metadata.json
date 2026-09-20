@@ -1,0 +1,6 @@
+{
+  "name": "Agenda Surat Masuk & Keluar Sekolah",
+  "description": "Aplikasi pencatatan dan pengelolaan agenda surat masuk, surat keluar, lembar disposisi, dan arsip berkas administrasi sekolah.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
