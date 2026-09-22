@@ -23,13 +23,29 @@ import { PrintBukuAgendaView } from './components/PrintBukuAgendaView';
 import { SchoolSettingsModal } from './components/SchoolSettingsModal';
 import { KlasifikasiModal } from './components/KlasifikasiModal';
 
-import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Cloud, RefreshCw } from 'lucide-react';
+import { 
+  subscribeSurat, 
+  subscribeSuratIzin, 
+  subscribeSekolah, 
+  saveSuratItem, 
+  deleteSuratItem, 
+  saveSuratIzinItem, 
+  deleteSuratIzinItem, 
+  saveIdentitasSekolah, 
+  seedInitialDataIfEmpty 
+} from './services/firestoreService';
+import { testFirestoreConnection } from './lib/firebase';
 
 const STORAGE_KEY_ITEMS = 'agenda_surat_items_v2';
 const STORAGE_KEY_SEKOLAH = 'agenda_surat_sekolah_v2';
 const STORAGE_KEY_SURAT_IZIN = 'agenda_surat_izin_v1';
 
 export default function App() {
+  // Cloud & Sync state
+  const [isCloudConnected, setIsCloudConnected] = useState<boolean>(true);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+
   // Persistence state
   const [items, setItems] = useState<SuratItem[]>(() => {
     try {
@@ -89,6 +105,63 @@ export default function App() {
     }
   }, [sekolah]);
 
+  // Real-time Firestore Cloud Database Synchronization
+  useEffect(() => {
+    let isMounted = true;
+
+    async function initFirestoreCloud() {
+      try {
+        setIsSyncing(true);
+        const isConnected = await testFirestoreConnection();
+        if (isMounted) setIsCloudConnected(isConnected);
+
+        // Seed initial data if Firestore collections are empty
+        await seedInitialDataIfEmpty(INITIAL_SURAT, INITIAL_SURAT_IZIN, INITIAL_SEKOLAH);
+      } catch (err) {
+        console.warn('Firestore initialization notice:', err);
+      } finally {
+        if (isMounted) setIsSyncing(false);
+      }
+    }
+
+    initFirestoreCloud();
+
+    // Subscribe to real-time changes from other computers/users
+    const unsubSurat = subscribeSurat(
+      (cloudItems) => {
+        if (isMounted && cloudItems.length > 0) {
+          setItems(cloudItems);
+        }
+      },
+      (err) => console.warn('Surat sync listener error:', err)
+    );
+
+    const unsubIzin = subscribeSuratIzin(
+      (cloudIzin) => {
+        if (isMounted && cloudIzin.length > 0) {
+          setSuratIzinItems(cloudIzin);
+        }
+      },
+      (err) => console.warn('Surat Izin sync listener error:', err)
+    );
+
+    const unsubSekolah = subscribeSekolah(
+      (cloudSekolah) => {
+        if (isMounted && cloudSekolah?.namaSekolah) {
+          setSekolah(cloudSekolah);
+        }
+      },
+      (err) => console.warn('Sekolah sync listener error:', err)
+    );
+
+    return () => {
+      isMounted = false;
+      unsubSurat();
+      unsubIzin();
+      unsubSekolah();
+    };
+  }, []);
+
   // Modal and Navigation states
   const [activeTab, setActiveTab] = useState<string>('ALL');
   const [isSuratModalOpen, setIsSuratModalOpen] = useState(false);
@@ -144,7 +217,8 @@ export default function App() {
     setIsSuratModalOpen(true);
   };
 
-  const handleSaveSurat = (savedItem: SuratItem) => {
+  const handleSaveSurat = async (savedItem: SuratItem) => {
+    // Immediate local optimistic update
     setItems((prev) => {
       const exists = prev.some((i) => i.id === savedItem.id);
       if (exists) {
@@ -156,36 +230,68 @@ export default function App() {
     setIsSuratModalOpen(false);
     showToast(
       savedItem.tipe === 'MASUK'
-        ? `Surat Masuk (${savedItem.noAgenda}) berhasil disimpan!`
-        : `Surat Keluar (${savedItem.noAgenda}) berhasil diterbitkan!`
+        ? `Surat Masuk (${savedItem.noAgenda}) tersimpan & disinkronkan ke Cloud!`
+        : `Surat Keluar (${savedItem.noAgenda}) diterbitkan & disinkronkan ke Cloud!`
     );
-  };
 
-  const handleDelete = (id: string) => {
-    const item = items.find((i) => i.id === id);
-    if (!item) return;
-
-    if (confirm(`Apakah Anda yakin ingin menghapus agenda ${item.noAgenda} (${item.perihal})?`)) {
-      setItems((prev) => prev.filter((i) => i.id !== id));
-      showToast(`Data agenda ${item.noAgenda} berhasil dihapus.`);
+    // Save to Firestore for multi-device sync
+    try {
+      setIsSyncing(true);
+      await saveSuratItem(savedItem);
+    } catch (err) {
+      console.error('Error saving to Firestore:', err);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
-  const handleSaveDisposisi = (suratId: string, disposisi: DisposisiData, newStatus: string) => {
+  const handleDelete = async (id: string) => {
+    const item = items.find((i) => i.id === id);
+    if (!item) return;
+
+    if (confirm(`Apakah Anda yakin ingin menghapus agenda ${item.noAgenda} (${item.perihal})? Perubahan akan terhapus di seluruh komputer.`)) {
+      setItems((prev) => prev.filter((i) => i.id !== id));
+      showToast(`Data agenda ${item.noAgenda} berhasil dihapus.`);
+
+      try {
+        setIsSyncing(true);
+        await deleteSuratItem(id);
+      } catch (err) {
+        console.error('Error deleting from Firestore:', err);
+      } finally {
+        setIsSyncing(false);
+      }
+    }
+  };
+
+  const handleSaveDisposisi = async (suratId: string, disposisi: DisposisiData, newStatus: string) => {
+    let updatedItem: SuratItem | null = null;
     setItems((prev) =>
       prev.map((item) => {
         if (item.id === suratId) {
-          return {
+          updatedItem = {
             ...item,
             disposisi,
             status: newStatus as any,
             updatedAt: new Date().toISOString()
           };
+          return updatedItem;
         }
         return item;
       })
     );
-    showToast('Lembar disposisi Kepala Sekolah berhasil diperbarui!');
+    showToast('Lembar disposisi berhasil diperbarui & disinkronkan ke seluruh komputer!');
+
+    if (updatedItem) {
+      try {
+        setIsSyncing(true);
+        await saveSuratItem(updatedItem);
+      } catch (err) {
+        console.error('Error updating disposisi in Firestore:', err);
+      } finally {
+        setIsSyncing(false);
+      }
+    }
   };
 
   const handleExportCsv = () => {
@@ -193,17 +299,58 @@ export default function App() {
     showToast('Data agenda berhasil diekspor ke format CSV / Excel!');
   };
 
-  const handleRestoreData = (newItems: SuratItem[], newSekolah: IdentitasSekolah) => {
+  const handleRestoreData = async (newItems: SuratItem[], newSekolah: IdentitasSekolah) => {
     setItems(newItems);
     setSekolah(newSekolah);
-    showToast('Data berhasil dipulihkan dari berkas cadangan!');
+    showToast('Data berhasil dipulihkan & disinkronkan ke Cloud!');
+
+    try {
+      setIsSyncing(true);
+      await saveIdentitasSekolah(newSekolah);
+      for (const it of newItems) {
+        await saveSuratItem(it);
+      }
+    } catch (err) {
+      console.error('Error syncing restored data:', err);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
-  const handleResetToDefault = () => {
+  const handleResetToDefault = async () => {
     setItems(INITIAL_SURAT);
     setSuratIzinItems(INITIAL_SURAT_IZIN);
     setSekolah(INITIAL_SEKOLAH);
     showToast('Data berhasil diatur ulang ke data contoh bawaan.');
+
+    try {
+      setIsSyncing(true);
+      await saveIdentitasSekolah(INITIAL_SEKOLAH);
+      for (const s of INITIAL_SURAT) {
+        await saveSuratItem(s);
+      }
+      for (const iz of INITIAL_SURAT_IZIN) {
+        await saveSuratIzinItem(iz);
+      }
+    } catch (err) {
+      console.error('Error resetting cloud data:', err);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleSaveSekolah = async (newSekolah: IdentitasSekolah) => {
+    setSekolah(newSekolah);
+    showToast('Profil sekolah berhasil diperbarui di seluruh perangkat!');
+
+    try {
+      setIsSyncing(true);
+      await saveIdentitasSekolah(newSekolah);
+    } catch (err) {
+      console.error('Error saving school profile to Firestore:', err);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   // Handlers for Surat Izin
@@ -217,7 +364,7 @@ export default function App() {
     setIsSuratIzinModalOpen(true);
   };
 
-  const handleSaveSuratIzin = (savedItem: SuratIzinItem) => {
+  const handleSaveSuratIzin = async (savedItem: SuratIzinItem) => {
     setSuratIzinItems((prev) => {
       const exists = prev.some((i) => i.id === savedItem.id);
       if (exists) {
@@ -227,37 +374,68 @@ export default function App() {
       }
     });
     setIsSuratIzinModalOpen(false);
-    showToast(`Catatan surat izin atas nama ${savedItem.namaLengkap} berhasil disimpan!`);
-  };
+    showToast(`Catatan izin ${savedItem.namaLengkap} tersimpan & disinkronkan ke Cloud!`);
 
-  const handleDeleteSuratIzin = (id: string) => {
-    const item = suratIzinItems.find((i) => i.id === id);
-    if (!item) return;
-
-    if (confirm(`Hapus catatan izin untuk ${item.namaLengkap}?`)) {
-      setSuratIzinItems((prev) => prev.filter((i) => i.id !== id));
-      showToast(`Catatan surat izin ${item.namaLengkap} berhasil dihapus.`);
+    try {
+      setIsSyncing(true);
+      await saveSuratIzinItem(savedItem);
+    } catch (err) {
+      console.error('Error saving surat izin to Firestore:', err);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
-  const handleUpdateStatusSuratIzin = (
+  const handleDeleteSuratIzin = async (id: string) => {
+    const item = suratIzinItems.find((i) => i.id === id);
+    if (!item) return;
+
+    if (confirm(`Hapus catatan izin untuk ${item.namaLengkap}? Perubahan akan terhapus di seluruh komputer.`)) {
+      setSuratIzinItems((prev) => prev.filter((i) => i.id !== id));
+      showToast(`Catatan surat izin ${item.namaLengkap} berhasil dihapus.`);
+
+      try {
+        setIsSyncing(true);
+        await deleteSuratIzinItem(id);
+      } catch (err) {
+        console.error('Error deleting surat izin from Firestore:', err);
+      } finally {
+        setIsSyncing(false);
+      }
+    }
+  };
+
+  const handleUpdateStatusSuratIzin = async (
     id: string,
     newStatus: 'Menunggu Persetujuan' | 'Disetujui' | 'Ditolak'
   ) => {
+    let updatedItem: SuratIzinItem | null = null;
     setSuratIzinItems((prev) =>
       prev.map((item) => {
         if (item.id === id) {
-          return {
+          updatedItem = {
             ...item,
             status: newStatus,
             disetujuiOleh: newStatus === 'Disetujui' ? sekolah.namaKepalaSekolah : item.disetujuiOleh,
             updatedAt: new Date().toISOString()
           };
+          return updatedItem;
         }
         return item;
       })
     );
-    showToast(`Status surat izin berhasil diperbarui menjadi ${newStatus}!`);
+    showToast(`Status surat izin berhasil disinkronkan menjadi ${newStatus}!`);
+
+    if (updatedItem) {
+      try {
+        setIsSyncing(true);
+        await saveSuratIzinItem(updatedItem);
+      } catch (err) {
+        console.error('Error updating status izin in Firestore:', err);
+      } finally {
+        setIsSyncing(false);
+      }
+    }
   };
 
   return (
@@ -298,6 +476,8 @@ export default function App() {
           onOpenKlasifikasi={() => setIsKlasifikasiOpen(true)}
           onExportCsv={handleExportCsv}
           onPrintAgenda={() => setIsPrintAgendaOpen(true)}
+          isCloudConnected={isCloudConnected}
+          isSyncing={isSyncing}
         />
 
         {/* Main Content Container */}
@@ -344,10 +524,13 @@ export default function App() {
             <div>
               <span className="font-semibold text-slate-700">{sekolah.namaSekolah}</span> — Sistem Informasi Buku Agenda & Disposisi Tata Usaha
             </div>
-            <div className="flex items-center gap-4 text-[11px]">
+            <div className="flex items-center gap-3 text-[11px]">
               <span>Kec. {sekolah.kecamatan}, {sekolah.kabupatenKota}</span>
               <span>•</span>
-              <span>Penyimpanan Mandiri</span>
+              <span className="inline-flex items-center gap-1.5 font-medium text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                Cloud Database Aktif (Multi-Komputer)
+              </span>
             </div>
           </div>
         </footer>
@@ -446,10 +629,7 @@ export default function App() {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         sekolah={sekolah}
-        onSaveSekolah={(newSekolah) => {
-          setSekolah(newSekolah);
-          showToast('Profil sekolah berhasil diperbarui!');
-        }}
+        onSaveSekolah={handleSaveSekolah}
         onRestoreData={handleRestoreData}
         onResetToDefault={handleResetToDefault}
         items={items}

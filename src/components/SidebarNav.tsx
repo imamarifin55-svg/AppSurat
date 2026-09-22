@@ -148,6 +148,14 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
               {sekolah.alamat}, Kec. {sekolah.kecamatan}, {sekolah.kabupatenKota}
             </span>
           </div>
+
+          <div className="mt-2.5 flex items-center justify-between px-2.5 py-1 rounded-lg bg-blue-900/80 border border-blue-700/60 text-[11px] text-blue-200">
+            <span className="flex items-center gap-1.5 font-semibold text-emerald-300">
+              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+              Cloud Database
+            </span>
+            <span className="text-blue-300 text-[10px]">Real-Time Sync</span>
+          </div>
         </div>
 
         {/* Quick Action Buttons (Primary CTAs) */}

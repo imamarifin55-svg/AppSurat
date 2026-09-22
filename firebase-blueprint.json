@@ -1,0 +1,79 @@
+{
+  "entities": {
+    "Surat": {
+      "title": "Surat",
+      "description": "Dokumen agenda surat masuk dan surat keluar sekolah",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tipe": { "type": "string", "enum": ["MASUK", "KELUAR"] },
+        "noAgenda": { "type": "string" },
+        "noSurat": { "type": "string" },
+        "tanggalSurat": { "type": "string" },
+        "tanggalTerimaOrKirim": { "type": "string" },
+        "pengirim": { "type": "string" },
+        "tujuan": { "type": "string" },
+        "perihal": { "type": "string" },
+        "ringkasan": { "type": "string" },
+        "kodeKlasifikasi": { "type": "string" },
+        "kategori": { "type": "string" },
+        "sifat": { "type": "string" },
+        "status": { "type": "string" },
+        "lampiranJumlah": { "type": "string" },
+        "lampiranNama": { "type": "string" },
+        "penandatangan": { "type": "string" },
+        "lokasiArsipFisik": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "tipe", "noAgenda", "noSurat", "perihal", "createdAt"]
+    },
+    "SuratIzin": {
+      "title": "SuratIzin",
+      "description": "Catatan izin guru, tendik, dan siswa",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tipePemohon": { "type": "string" },
+        "namaLengkap": { "type": "string" },
+        "nomorInduk": { "type": "string" },
+        "kelasAtauJabatan": { "type": "string" },
+        "jenisIzin": { "type": "string" },
+        "tanggalMulai": { "type": "string" },
+        "tanggalSelesai": { "type": "string" },
+        "jumlahHari": { "type": "number" },
+        "alasan": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "tipePemohon", "namaLengkap", "jenisIzin", "status", "createdAt"]
+    },
+    "IdentitasSekolah": {
+      "title": "IdentitasSekolah",
+      "description": "Profil dan identitas resmi sekolah",
+      "type": "object",
+      "properties": {
+        "namaSekolah": { "type": "string" },
+        "npsn": { "type": "string" },
+        "alamat": { "type": "string" },
+        "namaKepalaSekolah": { "type": "string" }
+      },
+      "required": ["namaSekolah", "npsn"]
+    }
+  },
+  "firestore": {
+    "/surat/{suratId}": {
+      "schema": "Surat",
+      "description": "Koleksi agenda surat masuk dan keluar"
+    },
+    "/surat_izin/{izinId}": {
+      "schema": "SuratIzin",
+      "description": "Koleksi surat perizinan siswa dan guru"
+    },
+    "/sekolah_config/{configId}": {
+      "schema": "IdentitasSekolah",
+      "description": "Konfigurasi profil sekolah"
+    }
+  }
+}

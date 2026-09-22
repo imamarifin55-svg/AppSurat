@@ -10,11 +10,15 @@ import {
   BookOpen, 
   Settings,
   Award,
-  Bell
+  Bell,
+  Cloud,
+  CheckCircle2
 } from 'lucide-react';
 
 interface TopNavbarProps {
   sekolah: IdentitasSekolah;
+  isCloudConnected?: boolean;
+  isSyncing?: boolean;
   onOpenMobileMenu: () => void;
   onOpenAddModal: (tipe: 'MASUK' | 'KELUAR') => void;
   onOpenSettings: () => void;
@@ -25,6 +29,8 @@ interface TopNavbarProps {
 
 export const TopNavbar: React.FC<TopNavbarProps> = ({
   sekolah,
+  isCloudConnected = true,
+  isSyncing = false,
   onOpenMobileMenu,
   onOpenAddModal,
   onOpenSettings,
@@ -68,8 +74,30 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
             </div>
           </div>
 
-          {/* Right section: Quick actions */}
+          {/* Right section: Quick actions & Cloud Sync */}
           <div className="flex items-center gap-2">
+
+            {/* Cloud Sync Status Indicator */}
+            <div 
+              className={`hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+                isCloudConnected 
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
+                  : 'bg-amber-50 text-amber-800 border-amber-200'
+              }`}
+              title={
+                isCloudConnected 
+                  ? "Database Cloud Aktif: Surat otomatis tersinkron ke semua komputer & perangkat secara real-time" 
+                  : "Mode Offline / Tersimpan Lokal"
+              }
+            >
+              <span className={`w-2 h-2 rounded-full shrink-0 ${
+                isCloudConnected 
+                  ? (isSyncing ? 'bg-amber-500 animate-ping' : 'bg-emerald-500') 
+                  : 'bg-amber-500'
+              }`}></span>
+              <Cloud className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="font-semibold">{isSyncing ? 'Menyinkronkan...' : 'Cloud Aktif'}</span>
+            </div>
             
             {/* Quick action buttons for desktop */}
             <div className="hidden sm:flex items-center gap-2">

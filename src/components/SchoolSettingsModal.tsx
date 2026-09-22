@@ -589,11 +589,14 @@ export const SchoolSettingsModal: React.FC<SchoolSettingsModalProps> = ({
 
           {/* Manajemen Cadangan Data */}
           <div className="space-y-2 pt-2">
-            <h3 className="font-bold text-slate-900 uppercase text-[11px] tracking-wider border-b pb-1">
-              4. Cadangan & Pemulihan Data (Backup / Restore)
+            <h3 className="font-bold text-slate-900 uppercase text-[11px] tracking-wider border-b pb-1 flex items-center justify-between">
+              <span>4. Database Cloud & Cadangan Data (Backup / Restore)</span>
+              <span className="text-emerald-600 font-bold lowercase text-[11px] normal-case bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                🟢 Cloud Multi-Komputer Aktif
+              </span>
             </h3>
             <p className="text-[11px] text-slate-500">
-              Data tersimpan otomatis di browser lokal. Anda dapat mengunduh salinan berkas cadangan (JSON) atau memulihkannya kapan saja.
+              Data kini tersinkronisasi otomatis ke <strong>Cloud Firestore</strong> sehingga dapat dilihat dan dikelola bersama dari laptop/komputer lain secara real-time. Anda juga tetap bisa mengunduh file cadangan mandiri (JSON / Offline HTML).
             </p>
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
