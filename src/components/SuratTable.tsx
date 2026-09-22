@@ -144,8 +144,8 @@ export const SuratTable: React.FC<SuratTableProps> = ({
           onClick={() => setActiveTab('MASUK')}
           className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold tracking-tight flex items-center gap-1.5 transition-all cursor-pointer ${
             activeTab === 'MASUK'
-              ? 'bg-sky-600 text-white shadow-xs'
-              : 'text-slate-600 hover:text-sky-700 hover:bg-sky-50/70'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/70'
           }`}
         >
           <Mail className="w-3.5 h-3.5" />
@@ -157,8 +157,8 @@ export const SuratTable: React.FC<SuratTableProps> = ({
           onClick={() => setActiveTab('KELUAR')}
           className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold tracking-tight flex items-center gap-1.5 transition-all cursor-pointer ${
             activeTab === 'KELUAR'
-              ? 'bg-emerald-600 text-white shadow-xs'
-              : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/70'
+              ? 'bg-orange-500 text-white shadow-xs'
+              : 'text-slate-600 hover:text-orange-700 hover:bg-orange-50/70'
           }`}
         >
           <Send className="w-3.5 h-3.5" />
@@ -170,8 +170,8 @@ export const SuratTable: React.FC<SuratTableProps> = ({
           onClick={() => setActiveTab('PERLU_DISPOSISI')}
           className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold tracking-tight flex items-center gap-1.5 transition-all cursor-pointer ${
             activeTab === 'PERLU_DISPOSISI'
-              ? 'bg-rose-500 text-white shadow-xs'
-              : 'text-slate-600 hover:text-rose-700 hover:bg-rose-50/70'
+              ? 'bg-cyan-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-cyan-700 hover:bg-cyan-50/70'
           }`}
         >
           <Clock className="w-3.5 h-3.5" />
@@ -183,8 +183,8 @@ export const SuratTable: React.FC<SuratTableProps> = ({
           onClick={() => setActiveTab('URGENT')}
           className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold tracking-tight flex items-center gap-1.5 transition-all cursor-pointer ${
             activeTab === 'URGENT'
-              ? 'bg-amber-600 text-white shadow-xs'
-              : 'text-slate-600 hover:text-amber-800 hover:bg-amber-50/70'
+              ? 'bg-pink-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-pink-700 hover:bg-pink-50/70'
           }`}
         >
           <AlertCircle className="w-3.5 h-3.5" />

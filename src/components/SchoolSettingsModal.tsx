@@ -509,7 +509,7 @@ export const SchoolSettingsModal: React.FC<SchoolSettingsModalProps> = ({
                 </div>
                 <div className="flex-1">
                   <div className="text-[9px] uppercase font-bold tracking-wider text-slate-800">
-                    PEMERINTAH {formData.kabupatenKota?.toUpperCase() || 'KABUPATEN'}
+                    PEMERINTAH {(formData.kabupatenKota || 'KABUPATEN').replace(/^kab\.\s*/i, 'Kabupaten ').toUpperCase()}
                   </div>
                   <div className="text-[9px] uppercase font-semibold text-slate-700">
                     DINAS PENDIDIKAN DAN KEBUDAYAAN

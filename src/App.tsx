@@ -72,7 +72,12 @@ export default function App() {
       const saved = localStorage.getItem(STORAGE_KEY_SEKOLAH);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.npsn === '10809848') return parsed;
+        if (parsed.npsn === '10809848') {
+          if (parsed.kabupatenKota === 'Kab. Tulang Bawang Barat') {
+            parsed.kabupatenKota = 'Kabupaten Tulang Bawang Barat';
+          }
+          return parsed;
+        }
       }
     } catch (e) {
       console.error('Failed to load sekolah from localStorage', e);
@@ -156,7 +161,13 @@ export default function App() {
         if (isMounted) {
           setIsCloudConnected(true);
           if (cloudSekolah?.namaSekolah) {
-            setSekolah(cloudSekolah);
+            if (cloudSekolah.kabupatenKota === 'Kab. Tulang Bawang Barat') {
+              const updated = { ...cloudSekolah, kabupatenKota: 'Kabupaten Tulang Bawang Barat' };
+              setSekolah(updated);
+              saveIdentitasSekolah(updated).catch(console.warn);
+            } else {
+              setSekolah(cloudSekolah);
+            }
           }
         }
       },

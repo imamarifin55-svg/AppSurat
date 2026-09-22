@@ -144,7 +144,7 @@ export const PrintBukuAgendaView: React.FC<PrintBukuAgendaViewProps> = ({
             {/* Identitas Instansi di bagian TENGAH */}
             <div className="flex-1 text-center px-2">
               <h3 className="text-xs sm:text-sm uppercase tracking-widest font-semibold text-black">
-                PEMERINTAH {sekolah.kabupatenKota.toUpperCase()}
+                PEMERINTAH {sekolah.kabupatenKota.replace(/^kab\.\s*/i, 'Kabupaten ').toUpperCase()}
               </h3>
               <h2 className="text-sm sm:text-base uppercase tracking-wider font-bold text-black mt-0.5">
                 DINAS PENDIDIKAN DAN KEBUDAYAAN
