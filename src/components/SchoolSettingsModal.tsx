@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { IdentitasSekolah, SuratItem } from '../types';
 import { 
   X, 
@@ -12,7 +12,9 @@ import {
   Trash2, 
   RefreshCw,
   Sparkles,
-  Info
+  Info,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { DEFAULT_LOGO_PEMDA, DEFAULT_LOGO_SEKOLAH } from '../data/initialData';
 
@@ -20,7 +22,7 @@ interface SchoolSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   sekolah: IdentitasSekolah;
-  onSaveSekolah: (sekolah: IdentitasSekolah) => void;
+  onSaveSekolah: (sekolah: IdentitasSekolah) => void | Promise<void>;
   onRestoreData: (items: SuratItem[], sekolah: IdentitasSekolah) => void;
   onResetToDefault: () => void;
   items: SuratItem[];
@@ -37,11 +39,20 @@ export const SchoolSettingsModal: React.FC<SchoolSettingsModalProps> = ({
 }) => {
   const [formData, setFormData] = useState<IdentitasSekolah>({ ...sekolah });
   const [successMsg, setSuccessMsg] = useState(false);
-  const [pemdaDragOver, setPemdaDragOver] = useState(false);
-  const [sekolahDragOver, setSekolahDragOver] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const pemdaInputRef = useRef<HTMLInputElement>(null);
   const sekolahInputRef = useRef<HTMLInputElement>(null);
+
+  // Synchronize formData with incoming sekolah prop when modal opens or when sekolah updates
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({ ...sekolah });
+      setSuccessMsg(false);
+      setSaveError(null);
+    }
+  }, [isOpen, sekolah]);
 
   if (!isOpen) return null;
 
@@ -50,26 +61,78 @@ export const SchoolSettingsModal: React.FC<SchoolSettingsModalProps> = ({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const processImageFile = (field: 'logoPemda' | 'logoSekolah', file: File) => {
+  // Resize and optimize image file to prevent Firestore size limits & local storage quota issues
+  const resizeImageToMax = (file: File, maxWidth = 260, maxHeight = 260): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      // If SVG, read as text/dataURL directly
+      if (file.type === 'image/svg+xml') {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Gagal membaca file SVG'));
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxWidth || height > maxHeight) {
+            if (width > height) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            } else {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, width);
+          canvas.height = Math.max(1, height);
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(e.target?.result as string);
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+          const isPng = file.type === 'image/png';
+          const format = isPng ? 'image/png' : 'image/jpeg';
+          const quality = isPng ? undefined : 0.85;
+          const dataUrl = canvas.toDataURL(format, quality);
+          resolve(dataUrl);
+        };
+        img.onerror = () => reject(new Error('Gagal memproses gambar'));
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error('Gagal membaca file gambar'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const processImageFile = async (field: 'logoPemda' | 'logoSekolah', file: File) => {
     if (!file.type.startsWith('image/')) {
       alert('Mohon pilih file gambar (PNG, JPG, JPEG, WebP, atau SVG).');
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Ukuran gambar maksimal 2MB agar tidak memperberat memori penyimpanan.');
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Ukuran gambar maksimal 5MB.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
+    try {
+      const optimizedDataUrl = await resizeImageToMax(file);
       setFormData((prev) => ({
         ...prev,
-        [field]: dataUrl
+        [field]: optimizedDataUrl
       }));
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Error optimizing image:', err);
+      alert('Gagal memproses gambar. Silakan gunakan format PNG atau JPG standar.');
+    }
   };
 
   const handleLogoUpload = (field: 'logoPemda' | 'logoSekolah', e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,14 +156,29 @@ export const SchoolSettingsModal: React.FC<SchoolSettingsModalProps> = ({
     }));
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSaveSekolah(formData);
-    setSuccessMsg(true);
-    setTimeout(() => {
-      setSuccessMsg(false);
-      onClose();
-    }, 1000);
+    if (!formData.namaSekolah?.trim()) {
+      alert('Nama Resmi Sekolah wajib diisi.');
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await onSaveSekolah(formData);
+      setSuccessMsg(true);
+      setTimeout(() => {
+        setSuccessMsg(false);
+        onClose();
+      }, 700);
+    } catch (err: any) {
+      console.error('Gagal menyimpan profil sekolah:', err);
+      const msg = err?.message || 'Terjadi kendala saat menyimpan. Silakan coba lagi.';
+      setSaveError(msg);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Export full JSON backup
@@ -174,7 +252,7 @@ export const SchoolSettingsModal: React.FC<SchoolSettingsModalProps> = ({
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSave} className="overflow-y-auto px-6 py-5 space-y-4 flex-1 text-xs">
+        <form onSubmit={handleSave} noValidate className="overflow-y-auto px-6 py-5 space-y-4 flex-1 text-xs">
           
           {/* Identitas Sekolah */}
           <div className="space-y-3">
@@ -647,28 +725,45 @@ export const SchoolSettingsModal: React.FC<SchoolSettingsModalProps> = ({
           </div>
 
           {/* Footer Save Button */}
-          <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
-            {successMsg ? (
-              <span className="text-xs font-semibold text-emerald-600 flex items-center gap-1">
-                <Check className="w-4 h-4" /> Tersimpan!
-              </span>
-            ) : (
-              <span></span>
-            )}
-            <div className="flex items-center gap-2">
+          <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div>
+              {successMsg && (
+                <span className="text-xs font-semibold text-emerald-600 flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+                  <Check className="w-4 h-4 text-emerald-600" /> Profil Berhasil Disimpan!
+                </span>
+              )}
+              {saveError && (
+                <span className="text-xs font-medium text-rose-600 flex items-center gap-1.5 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-200">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" /> {saveError}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 self-end sm:self-auto">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                disabled={isSaving}
+                className="px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
               >
                 Batal
               </button>
               <button
                 type="submit"
-                className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors cursor-pointer"
+                disabled={isSaving}
+                className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg shadow-xs transition-colors cursor-pointer"
               >
-                <Save className="w-4 h-4" />
-                <span>Simpan Profil Sekolah</span>
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    <span>Simpan Profil Sekolah</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

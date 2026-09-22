@@ -72,7 +72,7 @@ export default function App() {
       const saved = localStorage.getItem(STORAGE_KEY_SEKOLAH);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.npsn === '10809848') {
+        if (parsed && typeof parsed === 'object' && parsed.namaSekolah) {
           if (parsed.kabupatenKota === 'Kab. Tulang Bawang Barat') {
             parsed.kabupatenKota = 'Kabupaten Tulang Bawang Barat';
           }
@@ -361,13 +361,19 @@ export default function App() {
 
   const handleSaveSekolah = async (newSekolah: IdentitasSekolah) => {
     setSekolah(newSekolah);
-    showToast('Profil sekolah berhasil diperbarui di seluruh perangkat!');
+    try {
+      localStorage.setItem(STORAGE_KEY_SEKOLAH, JSON.stringify(newSekolah));
+    } catch (e) {
+      console.warn('Failed to save sekolah immediately to localStorage:', e);
+    }
 
     try {
       setIsSyncing(true);
       await saveIdentitasSekolah(newSekolah);
+      showToast('Profil sekolah berhasil disimpan & disinkronkan ke Cloud!');
     } catch (err) {
       console.error('Error saving school profile to Firestore:', err);
+      showToast('Profil tersimpan di perangkat lokal.');
     } finally {
       setIsSyncing(false);
     }

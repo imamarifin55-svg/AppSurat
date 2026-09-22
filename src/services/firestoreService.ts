@@ -212,7 +212,7 @@ export async function saveIdentitasSekolah(sekolah: IdentitasSekolah): Promise<v
   try {
     const cleaned = cleanForFirestore(sekolah);
     const docRef = doc(db, SEKOLAH_COLLECTION, SEKOLAH_DOC_ID);
-    await setDoc(docRef, cleaned, { merge: true });
+    await setDoc(docRef, cleaned);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
     throw error;
