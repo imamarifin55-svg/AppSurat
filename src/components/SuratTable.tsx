@@ -92,133 +92,133 @@ export const SuratTable: React.FC<SuratTableProps> = ({
   const getSifatBadge = (sifat: string) => {
     switch (sifat) {
       case 'Sangat Segera':
-        return 'bg-red-100 text-red-800 border-red-300 font-bold';
+        return 'bg-rose-50 text-rose-700 border-rose-200/70 font-semibold';
       case 'Penting':
-        return 'bg-red-50 text-red-700 border-red-300 font-semibold';
+        return 'bg-amber-50 text-amber-800 border-amber-200/70 font-semibold';
       case 'Rahasia':
-        return 'bg-purple-100 text-purple-800 border-purple-300';
+        return 'bg-purple-50 text-purple-700 border-purple-200/70 font-semibold';
       default:
-        return 'bg-slate-100 text-slate-700 border-slate-200';
+        return 'bg-slate-100 text-slate-600 border-slate-200/70';
     }
   };
 
   const getStatusBadge = (status: string, tipe: 'MASUK' | 'KELUAR') => {
     if (tipe === 'MASUK') {
       if (status === 'Menunggu Disposisi') {
-        return 'bg-red-50 text-red-700 border-red-300 font-semibold';
+        return 'bg-rose-50 text-rose-700 border-rose-200/70 font-semibold';
       }
       if (status === 'Proses Tindak Lanjut') {
-        return 'bg-blue-50 text-blue-700 border-blue-200';
+        return 'bg-sky-50 text-sky-700 border-sky-200/70 font-medium';
       }
-      return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      return 'bg-emerald-50 text-emerald-700 border-emerald-200/70 font-medium';
     } else {
       if (status === 'Terkirim') {
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200/70 font-medium';
       }
       if (status === 'Diterbitkan') {
-        return 'bg-blue-50 text-blue-700 border-blue-200';
+        return 'bg-blue-50 text-blue-700 border-blue-200/70 font-medium';
       }
-      return 'bg-slate-100 text-slate-700 border-slate-200';
+      return 'bg-slate-100 text-slate-600 border-slate-200/70 font-medium';
     }
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden transition-all">
       
-      {/* Tabs */}
-      <div className="border-b border-slate-200 px-4 sm:px-6 pt-3 flex flex-wrap gap-2 sm:gap-6">
+      {/* Modern Soft Segmented Tabs */}
+      <div className="p-3 sm:p-4 bg-slate-50/50 border-b border-slate-100 flex flex-wrap items-center gap-1.5 sm:gap-2">
         <button
           id="tab-semua"
           onClick={() => setActiveTab('ALL')}
-          className={`pb-3 text-xs sm:text-sm font-semibold tracking-tight border-b-2 transition-colors cursor-pointer ${
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold tracking-tight transition-all cursor-pointer ${
             activeTab === 'ALL'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              ? 'bg-slate-800 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
           }`}
         >
-          Semua Agenda ({items.length})
+          Semua Agenda <span className="ml-1 opacity-75">({items.length})</span>
         </button>
 
         <button
           id="tab-masuk"
           onClick={() => setActiveTab('MASUK')}
-          className={`pb-3 text-xs sm:text-sm font-semibold tracking-tight border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold tracking-tight flex items-center gap-1.5 transition-all cursor-pointer ${
             activeTab === 'MASUK'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              ? 'bg-sky-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-sky-700 hover:bg-sky-50/70'
           }`}
         >
-          <Mail className="w-4 h-4 text-blue-600" />
+          <Mail className="w-3.5 h-3.5" />
           <span>Surat Masuk ({items.filter((i) => i.tipe === 'MASUK').length})</span>
         </button>
 
         <button
           id="tab-keluar"
           onClick={() => setActiveTab('KELUAR')}
-          className={`pb-3 text-xs sm:text-sm font-semibold tracking-tight border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold tracking-tight flex items-center gap-1.5 transition-all cursor-pointer ${
             activeTab === 'KELUAR'
-              ? 'border-emerald-600 text-emerald-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/70'
           }`}
         >
-          <Send className="w-4 h-4 text-emerald-600" />
+          <Send className="w-3.5 h-3.5" />
           <span>Surat Keluar ({items.filter((i) => i.tipe === 'KELUAR').length})</span>
         </button>
 
         <button
           id="tab-perlu-disposisi"
           onClick={() => setActiveTab('PERLU_DISPOSISI')}
-          className={`pb-3 text-xs sm:text-sm font-semibold tracking-tight border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold tracking-tight flex items-center gap-1.5 transition-all cursor-pointer ${
             activeTab === 'PERLU_DISPOSISI'
-              ? 'border-red-600 text-red-600'
-              : 'border-transparent text-slate-500 hover:text-red-600 hover:border-red-300'
+              ? 'bg-rose-500 text-white shadow-xs'
+              : 'text-slate-600 hover:text-rose-700 hover:bg-rose-50/70'
           }`}
         >
-          <Clock className="w-4 h-4 text-red-600" />
+          <Clock className="w-3.5 h-3.5" />
           <span>Perlu Disposisi ({items.filter((i) => i.tipe === 'MASUK' && i.status === 'Menunggu Disposisi').length})</span>
         </button>
 
         <button
           id="tab-urgent"
           onClick={() => setActiveTab('URGENT')}
-          className={`pb-3 text-xs sm:text-sm font-semibold tracking-tight border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold tracking-tight flex items-center gap-1.5 transition-all cursor-pointer ${
             activeTab === 'URGENT'
-              ? 'border-red-600 text-red-600'
-              : 'border-transparent text-slate-500 hover:text-red-600 hover:border-red-300'
+              ? 'bg-amber-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-amber-800 hover:bg-amber-50/70'
           }`}
         >
-          <AlertCircle className="w-4 h-4 text-red-600" />
+          <AlertCircle className="w-3.5 h-3.5" />
           <span>Penting / Prioritas ({items.filter((i) => i.sifat === 'Sangat Segera' || i.sifat === 'Penting').length})</span>
         </button>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="p-4 bg-slate-50/70 border-b border-slate-200 flex flex-col sm:flex-row gap-3 items-center justify-between">
+      <div className="p-4 bg-white border-b border-slate-100 flex flex-col sm:flex-row gap-3 items-center justify-between">
         
         {/* Search Input */}
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        <div className="relative w-full sm:w-84">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             id="input-search-agenda"
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari no surat, perihal, pengirim, no agenda..."
-            className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
+            placeholder="Cari nomor surat, perihal, pengirim..."
+            className="w-full pl-10 pr-3.5 py-2 bg-slate-50/70 hover:bg-slate-50 focus:bg-white border border-slate-200/80 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:ring-3 focus:ring-sky-500/20 focus:border-sky-400 transition-all"
           />
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
           <div className="flex items-center gap-1.5 text-xs text-slate-500">
-            <Filter className="w-3.5 h-3.5" />
-            <span>Kategori:</span>
+            <Filter className="w-3.5 h-3.5 text-slate-400" />
+            <span className="font-medium">Kategori:</span>
           </div>
           <select
             id="select-filter-kategori"
             value={filterKategori}
             onChange={(e) => setFilterKategori(e.target.value)}
-            className="bg-white border border-slate-300 text-slate-700 text-xs rounded-lg px-2.5 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-blue-500/30"
+            className="bg-slate-50/70 hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-xl px-3 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 transition-colors"
           >
             <option value="ALL">Semua Kategori</option>
             {uniqueKategori.map((k) => (
@@ -226,14 +226,14 @@ export const SuratTable: React.FC<SuratTableProps> = ({
             ))}
           </select>
 
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 ml-2">
-            <span>Sifat:</span>
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 ml-1">
+            <span className="font-medium">Sifat:</span>
           </div>
           <select
             id="select-filter-sifat"
             value={filterSifat}
             onChange={(e) => setFilterSifat(e.target.value)}
-            className="bg-white border border-slate-300 text-slate-700 text-xs rounded-lg px-2.5 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-blue-500/30"
+            className="bg-slate-50/70 hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-xl px-3 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 transition-colors"
           >
             <option value="ALL">Semua Sifat</option>
             <option value="Biasa">Biasa</option>
@@ -249,9 +249,9 @@ export const SuratTable: React.FC<SuratTableProps> = ({
                 setFilterKategori('ALL');
                 setFilterSifat('ALL');
               }}
-              className="text-xs text-blue-600 hover:text-blue-800 font-medium px-2 py-1"
+              className="text-xs text-sky-600 hover:text-sky-800 bg-sky-50 hover:bg-sky-100/80 font-medium px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
             >
-              Reset
+              Reset Filter
             </button>
           )}
         </div>
@@ -261,7 +261,7 @@ export const SuratTable: React.FC<SuratTableProps> = ({
       {/* Table Content */}
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs text-slate-700">
-          <thead className="bg-slate-100/70 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
+          <thead className="bg-slate-50/60 border-b border-slate-100 text-slate-500 font-semibold uppercase tracking-wider text-[10.5px]">
             <tr>
               <th className="py-3 px-4 w-28">No. Agenda</th>
               <th className="py-3 px-4 w-44">No. & Tanggal Surat</th>
@@ -272,15 +272,17 @@ export const SuratTable: React.FC<SuratTableProps> = ({
               <th className="py-3 px-4 w-36 text-right">Aksi</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200/80">
+          <tbody className="divide-y divide-slate-100">
             {filteredItems.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-12 text-center text-slate-500">
+                <td colSpan={7} className="py-14 text-center text-slate-500">
                   <div className="max-w-xs mx-auto flex flex-col items-center">
-                    <FileText className="w-10 h-10 text-slate-300 mb-2" />
-                    <p className="font-medium text-slate-700">Tidak ada surat yang sesuai</p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Coba sesuaikan kata kunci pencarian atau bersihkan filter yang aktif.
+                    <div className="w-12 h-12 rounded-2xl bg-slate-100/80 flex items-center justify-center text-slate-400 mb-3">
+                      <FileText className="w-6 h-6" />
+                    </div>
+                    <p className="font-semibold text-slate-700 text-sm">Tidak ada surat yang sesuai</p>
+                    <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                      Coba sesuaikan kata kunci pencarian atau ganti filter kategori/sifat di atas.
                     </p>
                   </div>
                 </td>
@@ -289,64 +291,67 @@ export const SuratTable: React.FC<SuratTableProps> = ({
               filteredItems.map((item) => (
                 <tr 
                   key={item.id} 
-                  className="hover:bg-blue-50/30 transition-colors"
+                  className="hover:bg-slate-50/60 transition-colors group"
                 >
                   {/* No Agenda & Tipe */}
-                  <td className="py-3 px-4 align-top">
-                    <div className="font-bold text-slate-900 font-mono text-[11px]">
+                  <td className="py-3.5 px-4 align-top">
+                    <div className="font-bold text-slate-900 font-mono text-[11px] tracking-tight">
                       {item.noAgenda}
                     </div>
-                    <div className="mt-1 flex items-center gap-1">
+                    <div className="mt-1.5 flex items-center gap-1">
                       {item.tipe === 'MASUK' ? (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-800">
-                          <Mail className="w-3 h-3" /> Masuk
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200/60">
+                          <Mail className="w-3 h-3 text-sky-500" /> Masuk
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800">
-                          <Send className="w-3 h-3" /> Keluar
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                          <Send className="w-3 h-3 text-emerald-500" /> Keluar
                         </span>
                       )}
                     </div>
                   </td>
 
                   {/* No Surat & Tanggal */}
-                  <td className="py-3 px-4 align-top">
-                    <div className="font-semibold text-slate-900 break-words leading-tight">
+                  <td className="py-3.5 px-4 align-top">
+                    <div className="font-semibold text-slate-800 break-words leading-snug">
                       {item.noSurat}
                     </div>
-                    <div className="text-slate-500 text-[11px] mt-1">
-                      Tgl: <span className="text-slate-700 font-medium">{formatTanggalPendek(item.tanggalSurat)}</span>
+                    <div className="text-slate-500 text-[11px] mt-1.5 flex items-center gap-1">
+                      <span>Tgl:</span>
+                      <span className="text-slate-700 font-medium">{formatTanggalPendek(item.tanggalSurat)}</span>
                     </div>
-                    <div className="text-slate-400 text-[10px]">
+                    <div className="text-slate-400 text-[10.5px] mt-0.5">
                       {item.tipe === 'MASUK' ? 'Diterima:' : 'Dikirim:'} {formatTanggalPendek(item.tanggalTerimaOrKirim)}
                     </div>
                   </td>
 
                   {/* Asal / Tujuan */}
-                  <td className="py-3 px-4 align-top">
-                    <div className="font-medium text-slate-800 line-clamp-2">
+                  <td className="py-3.5 px-4 align-top">
+                    <div className="font-medium text-slate-800 line-clamp-2 leading-snug">
                       {item.tipe === 'MASUK' ? item.pengirim : item.tujuan}
                     </div>
                     {item.lokasiArsipFisik && (
-                      <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
-                        <span>Arsip: {item.lokasiArsipFisik}</span>
+                      <div className="text-[10px] text-slate-400 mt-1.5 flex items-center gap-1">
+                        <span className="px-1.5 py-0.5 rounded bg-slate-100/80 border border-slate-200/60">
+                          Arsip: {item.lokasiArsipFisik}
+                        </span>
                       </div>
                     )}
                   </td>
 
                   {/* Perihal & Ringkasan */}
-                  <td className="py-3 px-4 align-top">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-mono bg-slate-100 text-slate-700 border border-slate-200">
-                        <Tag className="w-2.5 h-2.5" />
+                  <td className="py-3.5 px-4 align-top">
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-600 border border-slate-200/60">
+                        <Tag className="w-2.5 h-2.5 text-slate-400" />
                         {item.kodeKlasifikasi}
                       </span>
                       <span className="text-[11px] font-medium text-slate-500">
                         {item.kategori}
                       </span>
                       {item.fileData && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                          <Paperclip className="w-3 h-3 text-emerald-600" />
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                          <Paperclip className="w-3 h-3 text-emerald-500" />
                           Berkas Terunggah
                         </span>
                       )}
@@ -357,50 +362,52 @@ export const SuratTable: React.FC<SuratTableProps> = ({
                         </span>
                       )}
                     </div>
-                    <div className="font-semibold text-slate-900 line-clamp-2">
+                    <div className="font-semibold text-slate-900 line-clamp-2 leading-snug">
                       {item.perihal}
                     </div>
-                    <p className="text-slate-500 text-[11px] line-clamp-2 mt-0.5 leading-relaxed">
-                      {item.ringkasan}
-                    </p>
+                    {item.ringkasan && (
+                      <p className="text-slate-500 text-[11px] line-clamp-2 mt-1 leading-relaxed">
+                        {item.ringkasan}
+                      </p>
+                    )}
                   </td>
 
                   {/* Sifat & Status */}
-                  <td className="py-3 px-4 align-top">
+                  <td className="py-3.5 px-4 align-top">
                     <div className="flex flex-col gap-1.5 items-start">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getSifatBadge(item.sifat)}`}>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium border ${getSifatBadge(item.sifat)}`}>
                         {item.sifat}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${getStatusBadge(item.status, item.tipe)}`}>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium border ${getStatusBadge(item.status, item.tipe)}`}>
                         {item.status}
                       </span>
                     </div>
                   </td>
 
                   {/* Disposisi Column (for Incoming Mail) */}
-                  <td className="py-3 px-4 align-top text-center">
+                  <td className="py-3.5 px-4 align-top text-center">
                     {item.tipe === 'MASUK' ? (
                       item.disposisi ? (
                         <div className="flex flex-col items-center gap-1">
                           <button
                             onClick={() => onOpenDisposisi(item)}
-                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2 py-1 rounded transition-colors cursor-pointer"
+                            className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-700 bg-sky-50 hover:bg-sky-100/80 border border-sky-200/70 px-2.5 py-1 rounded-lg transition-all cursor-pointer shadow-2xs"
                             title="Edit / Lihat Lembar Disposisi"
                           >
-                            <FileCheck2 className="w-3.5 h-3.5" />
+                            <FileCheck2 className="w-3.5 h-3.5 text-sky-500" />
                             <span>Sudah Disposisi</span>
                           </button>
                           <span className="text-[10px] text-slate-400">
-                            {item.disposisi.tujuanJabatan.length} Tujuan Pejabat
+                            {item.disposisi.tujuanJabatan.length} Pejabat Tujuan
                           </span>
                         </div>
                       ) : (
                         <button
                           onClick={() => onOpenDisposisi(item)}
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-300 px-2 py-1 rounded transition-colors cursor-pointer"
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/70 px-2.5 py-1 rounded-lg transition-all cursor-pointer shadow-2xs"
                           title="Isi Lembar Disposisi Kepala Sekolah"
                         >
-                          <Clock className="w-3.5 h-3.5 text-red-600" />
+                          <Clock className="w-3.5 h-3.5 text-rose-500" />
                           <span>+ Disposisi</span>
                         </button>
                       )
@@ -410,7 +417,7 @@ export const SuratTable: React.FC<SuratTableProps> = ({
                   </td>
 
                   {/* Aksi */}
-                  <td className="py-3 px-4 align-top text-right">
+                  <td className="py-3.5 px-4 align-top text-right">
                     <div className="flex items-center justify-end gap-1">
                       {/* Tombol Preview Berkas / Surat */}
                       <button
@@ -421,7 +428,7 @@ export const SuratTable: React.FC<SuratTableProps> = ({
                             onViewDetail(item);
                           }
                         }}
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-md border border-blue-200 transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-sky-50 hover:bg-sky-100/80 text-sky-700 text-xs font-semibold rounded-lg border border-sky-200/70 transition-all cursor-pointer shadow-2xs"
                         title="Preview Surat & Berkas Unggahan"
                       >
                         <Eye className="w-3.5 h-3.5" />
@@ -430,7 +437,7 @@ export const SuratTable: React.FC<SuratTableProps> = ({
 
                       <button
                         onClick={() => onViewDetail(item)}
-                        className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                        className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                         title="Lihat Detail Metadata"
                       >
                         <FileText className="w-4 h-4" />
@@ -439,7 +446,7 @@ export const SuratTable: React.FC<SuratTableProps> = ({
                       {item.tipe === 'MASUK' && (
                         <button
                           onClick={() => onPrintDisposisi(item)}
-                          className="p-1.5 text-slate-600 hover:text-indigo-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
                           title="Cetak Lembar Disposisi Resmi"
                         >
                           <Printer className="w-4 h-4" />
@@ -448,7 +455,7 @@ export const SuratTable: React.FC<SuratTableProps> = ({
 
                       <button
                         onClick={() => onEdit(item)}
-                        className="p-1.5 text-slate-600 hover:text-amber-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                        className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
                         title="Edit Data Surat"
                       >
                         <Edit3 className="w-4 h-4" />
@@ -456,7 +463,7 @@ export const SuratTable: React.FC<SuratTableProps> = ({
 
                       <button
                         onClick={() => onDelete(item.id)}
-                        className="p-1.5 text-slate-600 hover:text-rose-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                         title="Hapus Surat"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -472,7 +479,7 @@ export const SuratTable: React.FC<SuratTableProps> = ({
       </div>
 
       {/* Footer Info */}
-      <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+      <div className="px-5 py-3.5 bg-slate-50/60 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
         <div>
           Menampilkan <span className="font-semibold text-slate-700">{filteredItems.length}</span> dari <span className="font-semibold text-slate-700">{items.length}</span> agenda persuratan sekolah.
         </div>

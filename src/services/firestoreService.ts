@@ -12,6 +12,39 @@ import {
 import { db } from '../lib/firebase';
 import { SuratItem, SuratIzinItem, IdentitasSekolah } from '../types';
 
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+  };
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errMessage = error instanceof Error ? error.message : String(error);
+  const errInfo: FirestoreErrorInfo = {
+    error: errMessage,
+    authInfo: {},
+    operationType,
+    path
+  };
+  console.warn('Firestore Operation Notice: ', JSON.stringify(errInfo));
+  if (errMessage.includes('insufficient permissions') || errMessage.includes('Missing or insufficient permissions')) {
+    throw new Error(JSON.stringify(errInfo));
+  }
+}
+
 // Helper to remove undefined fields because Firestore rejects undefined
 function cleanForFirestore<T extends Record<string, any>>(obj: T): T {
   const cleaned: any = {};
@@ -56,7 +89,7 @@ export function subscribeSurat(
       onData(list);
     },
     (error) => {
-      console.error('Error listening to surat collection:', error);
+      handleFirestoreError(error, OperationType.LIST, SURAT_COLLECTION);
       if (onError) onError(error);
     }
   );
@@ -85,7 +118,7 @@ export function subscribeSuratIzin(
       onData(list);
     },
     (error) => {
-      console.error('Error listening to surat_izin collection:', error);
+      handleFirestoreError(error, OperationType.LIST, SURAT_IZIN_COLLECTION);
       if (onError) onError(error);
     }
   );
@@ -107,7 +140,7 @@ export function subscribeSekolah(
       }
     },
     (error) => {
-      console.error('Error listening to sekolah config:', error);
+      handleFirestoreError(error, OperationType.GET, `${SEKOLAH_COLLECTION}/${SEKOLAH_DOC_ID}`);
       if (onError) onError(error);
     }
   );
@@ -117,43 +150,73 @@ export function subscribeSekolah(
  * Save or update a single Surat item to Firestore
  */
 export async function saveSuratItem(item: SuratItem): Promise<void> {
-  const cleaned = cleanForFirestore(item);
-  const docRef = doc(db, SURAT_COLLECTION, item.id);
-  await setDoc(docRef, cleaned, { merge: true });
+  const path = `${SURAT_COLLECTION}/${item.id}`;
+  try {
+    const cleaned = cleanForFirestore(item);
+    const docRef = doc(db, SURAT_COLLECTION, item.id);
+    await setDoc(docRef, cleaned, { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
 }
 
 /**
  * Delete a Surat item from Firestore
  */
 export async function deleteSuratItem(id: string): Promise<void> {
-  const docRef = doc(db, SURAT_COLLECTION, id);
-  await deleteDoc(docRef);
+  const path = `${SURAT_COLLECTION}/${id}`;
+  try {
+    const docRef = doc(db, SURAT_COLLECTION, id);
+    await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+    throw error;
+  }
 }
 
 /**
  * Save or update a Surat Izin item to Firestore
  */
 export async function saveSuratIzinItem(item: SuratIzinItem): Promise<void> {
-  const cleaned = cleanForFirestore(item);
-  const docRef = doc(db, SURAT_IZIN_COLLECTION, item.id);
-  await setDoc(docRef, cleaned, { merge: true });
+  const path = `${SURAT_IZIN_COLLECTION}/${item.id}`;
+  try {
+    const cleaned = cleanForFirestore(item);
+    const docRef = doc(db, SURAT_IZIN_COLLECTION, item.id);
+    await setDoc(docRef, cleaned, { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
 }
 
 /**
  * Delete a Surat Izin item from Firestore
  */
 export async function deleteSuratIzinItem(id: string): Promise<void> {
-  const docRef = doc(db, SURAT_IZIN_COLLECTION, id);
-  await deleteDoc(docRef);
+  const path = `${SURAT_IZIN_COLLECTION}/${id}`;
+  try {
+    const docRef = doc(db, SURAT_IZIN_COLLECTION, id);
+    await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+    throw error;
+  }
 }
 
 /**
  * Save or update school identity to Firestore
  */
 export async function saveIdentitasSekolah(sekolah: IdentitasSekolah): Promise<void> {
-  const cleaned = cleanForFirestore(sekolah);
-  const docRef = doc(db, SEKOLAH_COLLECTION, SEKOLAH_DOC_ID);
-  await setDoc(docRef, cleaned, { merge: true });
+  const path = `${SEKOLAH_COLLECTION}/${SEKOLAH_DOC_ID}`;
+  try {
+    const cleaned = cleanForFirestore(sekolah);
+    const docRef = doc(db, SEKOLAH_COLLECTION, SEKOLAH_DOC_ID);
+    await setDoc(docRef, cleaned, { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
 }
 
 /**

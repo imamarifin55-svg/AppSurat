@@ -129,29 +129,38 @@ export default function App() {
     // Subscribe to real-time changes from other computers/users
     const unsubSurat = subscribeSurat(
       (cloudItems) => {
-        if (isMounted && cloudItems.length > 0) {
-          setItems(cloudItems);
+        if (isMounted) {
+          setIsCloudConnected(true);
+          if (cloudItems.length > 0) {
+            setItems(cloudItems);
+          }
         }
       },
-      (err) => console.warn('Surat sync listener error:', err)
+      (err) => console.warn('Surat sync listener notice:', err)
     );
 
     const unsubIzin = subscribeSuratIzin(
       (cloudIzin) => {
-        if (isMounted && cloudIzin.length > 0) {
-          setSuratIzinItems(cloudIzin);
+        if (isMounted) {
+          setIsCloudConnected(true);
+          if (cloudIzin.length > 0) {
+            setSuratIzinItems(cloudIzin);
+          }
         }
       },
-      (err) => console.warn('Surat Izin sync listener error:', err)
+      (err) => console.warn('Surat Izin sync listener notice:', err)
     );
 
     const unsubSekolah = subscribeSekolah(
       (cloudSekolah) => {
-        if (isMounted && cloudSekolah?.namaSekolah) {
-          setSekolah(cloudSekolah);
+        if (isMounted) {
+          setIsCloudConnected(true);
+          if (cloudSekolah?.namaSekolah) {
+            setSekolah(cloudSekolah);
+          }
         }
       },
-      (err) => console.warn('Sekolah sync listener error:', err)
+      (err) => console.warn('Sekolah sync listener notice:', err)
     );
 
     return () => {
@@ -464,8 +473,8 @@ export default function App() {
         itemsCount={itemsCount}
       />
 
-      {/* Main Content Area (offset by sidebar on desktop) */}
-      <div className="flex-1 flex flex-col min-w-0 lg:pl-72">
+      {/* Main Content Area (offset by sidebar on desktop) - Background Hijau Daun (Soft Leaf Green) */}
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-72 bg-gradient-to-br from-[#eaf4ec] via-[#f0f7f1] to-[#e7f3ea]">
         
         {/* Top Navbar */}
         <TopNavbar
@@ -519,7 +528,7 @@ export default function App() {
         </main>
 
         {/* Footer */}
-        <footer className="bg-white border-t border-slate-200 py-4 mt-auto">
+        <footer className="bg-white/85 backdrop-blur-xs border-t border-emerald-900/10 py-4 mt-auto">
           <div className="px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 max-w-7xl mx-auto">
             <div>
               <span className="font-semibold text-slate-700">{sekolah.namaSekolah}</span> — Sistem Informasi Buku Agenda & Disposisi Tata Usaha
