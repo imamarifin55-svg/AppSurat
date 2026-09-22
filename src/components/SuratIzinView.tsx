@@ -70,41 +70,74 @@ export const SuratIzinView: React.FC<SuratIzinViewProps> = ({
       
       {/* Top Banner & Quick Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="group bg-gradient-to-br from-white via-sky-50/40 to-blue-50/60 p-4 sm:p-5 rounded-2xl border border-slate-200/80 hover:border-sky-200 hover:shadow-md transition-all duration-200 flex items-center justify-between">
-          <div>
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Izin Siswa</span>
-            <div className="text-3xl font-bold text-slate-800 tracking-tight mt-1.5">{siswaCount}</div>
-            <span className="text-[11px] text-slate-400 font-medium">Catatan izin & sakit siswa</span>
+        
+        {/* Card 1: Izin Siswa (Kotak Gradasi Hijau Lembut) */}
+        <div 
+          id="stat-izin-siswa"
+          onClick={() => setFilterTipe('Siswa')}
+          className={`group relative p-4 sm:p-5 rounded-2xl transition-all duration-200 cursor-pointer shadow-sm border border-emerald-400/25 overflow-hidden flex items-center justify-between ${
+            filterTipe === 'Siswa'
+              ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white ring-4 ring-emerald-300/80 shadow-lg scale-[1.01]'
+              : 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white hover:brightness-105 hover:shadow-md hover:-translate-y-0.5'
+          }`}
+        >
+          <div className="absolute -top-12 -right-12 w-28 h-28 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+
+          <div className="relative z-10">
+            <span className="text-xs font-semibold text-emerald-100 uppercase tracking-wider">Izin Siswa</span>
+            <div className="text-3xl font-bold text-white tracking-tight mt-1.5">{siswaCount}</div>
+            <span className="text-[11px] text-emerald-100/90 font-medium">Catatan izin & sakit siswa</span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-sky-50 border border-sky-100 text-sky-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+          <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs border border-white/25 text-white flex items-center justify-center group-hover:scale-105 transition-transform shadow-xs relative z-10">
             <GraduationCap className="w-6 h-6" />
           </div>
         </div>
 
-        <div className="group bg-gradient-to-br from-white via-emerald-50/40 to-teal-50/60 p-4 sm:p-5 rounded-2xl border border-slate-200/80 hover:border-emerald-200 hover:shadow-md transition-all duration-200 flex items-center justify-between">
-          <div>
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Izin Guru / Tendik</span>
-            <div className="text-3xl font-bold text-slate-800 tracking-tight mt-1.5">{guruCount}</div>
-            <span className="text-[11px] text-slate-400 font-medium">Dinas, sakit, & cuti</span>
+        {/* Card 2: Izin Guru / Tendik (Kotak Gradasi Kuning Lembut) */}
+        <div 
+          id="stat-izin-guru"
+          onClick={() => setFilterTipe('Guru / Tendik')}
+          className={`group relative p-4 sm:p-5 rounded-2xl transition-all duration-200 cursor-pointer shadow-sm border border-amber-300/30 overflow-hidden flex items-center justify-between ${
+            filterTipe === 'Guru / Tendik'
+              ? 'bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 text-white ring-4 ring-amber-200/90 shadow-lg scale-[1.01]'
+              : 'bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 text-white hover:brightness-105 hover:shadow-md hover:-translate-y-0.5'
+          }`}
+        >
+          <div className="absolute -top-12 -right-12 w-28 h-28 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+
+          <div className="relative z-10">
+            <span className="text-xs font-semibold text-amber-100 uppercase tracking-wider">Izin Guru / Tendik</span>
+            <div className="text-3xl font-bold text-white tracking-tight mt-1.5">{guruCount}</div>
+            <span className="text-[11px] text-amber-100/90 font-medium">Dinas, sakit, & cuti</span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+          <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs border border-white/25 text-white flex items-center justify-center group-hover:scale-105 transition-transform shadow-xs relative z-10">
             <Briefcase className="w-6 h-6" />
           </div>
         </div>
 
-        {/* Soft Modern Rose: Izin Perlu Persetujuan */}
-        <div className="group bg-gradient-to-br from-white via-rose-50/50 to-pink-50/60 p-4 sm:p-5 rounded-2xl border border-rose-200/70 hover:border-rose-300 hover:shadow-md transition-all duration-200 flex items-center justify-between">
-          <div>
+        {/* Card 3: Perlu Persetujuan (Kotak Gradasi Ungu Lembut) */}
+        <div 
+          id="stat-izin-pending"
+          onClick={() => setFilterStatus('Menunggu Persetujuan')}
+          className={`group relative p-4 sm:p-5 rounded-2xl transition-all duration-200 cursor-pointer shadow-sm border border-purple-300/30 overflow-hidden flex items-center justify-between ${
+            filterStatus === 'Menunggu Persetujuan'
+              ? 'bg-gradient-to-br from-violet-500 via-purple-600 to-indigo-700 text-white ring-4 ring-purple-300/80 shadow-lg scale-[1.01]'
+              : 'bg-gradient-to-br from-violet-500 via-purple-600 to-indigo-700 text-white hover:brightness-105 hover:shadow-md hover:-translate-y-0.5'
+          }`}
+        >
+          <div className="absolute -top-12 -right-12 w-28 h-28 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+
+          <div className="relative z-10">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold text-rose-700 uppercase tracking-wider">Perlu Persetujuan</span>
-              {pendingCount > 0 && <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>}
+              <span className="text-xs font-semibold text-purple-100 uppercase tracking-wider">Perlu Persetujuan</span>
+              {pendingCount > 0 && <span className="w-2 h-2 rounded-full bg-white animate-pulse shadow-xs"></span>}
             </div>
-            <div className="text-3xl font-bold text-slate-800 tracking-tight mt-1.5">{pendingCount}</div>
-            <span className="text-[11px] text-rose-600/80 font-medium">
+            <div className="text-3xl font-bold text-white tracking-tight mt-1.5">{pendingCount}</div>
+            <span className="text-[11px] text-purple-100/90 font-medium">
               {pendingCount > 0 ? 'Menunggu persetujuan kepala sekolah' : 'Semua telah disetujui'}
             </span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+          <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs border border-white/25 text-white flex items-center justify-center group-hover:scale-105 transition-transform shadow-xs relative z-10">
             <AlertCircle className="w-6 h-6" />
           </div>
         </div>
@@ -175,7 +208,7 @@ export const SuratIzinView: React.FC<SuratIzinViewProps> = ({
               <button
                 onClick={() => setFilterTipe('Siswa')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  filterTipe === 'Siswa' ? 'bg-white text-sky-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                  filterTipe === 'Siswa' ? 'bg-white text-emerald-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Siswa ({siswaCount})
@@ -183,7 +216,7 @@ export const SuratIzinView: React.FC<SuratIzinViewProps> = ({
               <button
                 onClick={() => setFilterTipe('Guru / Tendik')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  filterTipe === 'Guru / Tendik' ? 'bg-white text-emerald-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                  filterTipe === 'Guru / Tendik' ? 'bg-white text-amber-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Guru / Tendik ({guruCount})
