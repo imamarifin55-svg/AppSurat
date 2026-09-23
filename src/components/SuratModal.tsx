@@ -2,7 +2,24 @@ import React, { useState, useEffect, useRef } from 'react';
 import { SuratItem, TipeSurat, SifatSurat, StatusSuratMasuk, StatusSuratKeluar, IdentitasSekolah } from '../types';
 import { DAFTAR_KLASIFIKASI } from '../data/klasifikasiSurat';
 import { generateNextNomorAgenda, toRomanMonth } from '../utils/formatters';
-import { X, Mail, Send, Wand2, Paperclip, HelpCircle, Check, UploadCloud, FileText, Trash2, Eye } from 'lucide-react';
+import { 
+  X, 
+  Mail, 
+  Send, 
+  Wand2, 
+  Paperclip, 
+  HelpCircle, 
+  Check, 
+  UploadCloud, 
+  FileText, 
+  Trash2, 
+  Eye, 
+  RotateCw, 
+  Smartphone, 
+  ExternalLink,
+  Image as ImageIcon
+} from 'lucide-react';
+import { DocumentFileViewer } from './DocumentFileViewer';
 
 interface SuratModalProps {
   isOpen: boolean;
@@ -46,6 +63,7 @@ export const SuratModal: React.FC<SuratModalProps> = ({
   const [fileType, setFileType] = useState<string | undefined>(undefined);
   const [fileSize, setFileSize] = useState<number | undefined>(undefined);
   const [isDragging, setIsDragging] = useState(false);
+  const [showQuickPreview, setShowQuickPreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Load initial data when modal opens
@@ -96,19 +114,97 @@ export const SuratModal: React.FC<SuratModalProps> = ({
     }
   }, [initialItem, defaultTipe, isOpen, sekolah]);
 
-  // Handle file reading
+  // Handle file reading with mobile camera image optimization
   const processUploadedFile = (file: File) => {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setFileData(reader.result as string);
-      setFileType(file.type);
-      setFileSize(file.size);
-      if (!lampiranNama) {
-        setLampiranNama(file.name);
+
+    // Check if image for camera optimization (avoids hitting Firestore 1MB limit & loads fast on mobile)
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          const maxDim = 1600;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const optimizedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            setFileData(optimizedDataUrl);
+            setFileType('image/jpeg');
+            const approxBytes = Math.round((optimizedDataUrl.length * 3) / 4);
+            setFileSize(approxBytes);
+          } else {
+            setFileData(e.target?.result as string);
+            setFileType(file.type);
+            setFileSize(file.size);
+          }
+          if (!lampiranNama) {
+            setLampiranNama(file.name);
+          }
+        };
+        img.onerror = () => {
+          setFileData(e.target?.result as string);
+          setFileType(file.type);
+          setFileSize(file.size);
+          if (!lampiranNama) {
+            setLampiranNama(file.name);
+          }
+        };
+        img.src = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    } else {
+      // PDF or other documents
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Perhatian: Ukuran file PDF disarankan di bawah 2MB agar sinkronisasi cloud tetap lancar.');
       }
+      const reader = new FileReader();
+      reader.onload = () => {
+        setFileData(reader.result as string);
+        setFileType(file.type);
+        setFileSize(file.size);
+        if (!lampiranNama) {
+          setLampiranNama(file.name);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Helper to rotate image 90 degrees directly (very common for mobile camera photos)
+  const handleRotateUploadedImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!fileData) return;
+    const isImage = fileType?.startsWith('image/') || fileData.startsWith('data:image/');
+    if (!isImage) return;
+
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.height;
+      canvas.height = img.width;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate((90 * Math.PI) / 180);
+      ctx.drawImage(img, -img.width / 2, -img.height / 2);
+      const rotatedUrl = canvas.toDataURL('image/jpeg', 0.85);
+      setFileData(rotatedUrl);
     };
-    reader.readAsDataURL(file);
+    img.src = fileData;
   };
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -512,42 +608,98 @@ export const SuratModal: React.FC<SuratModalProps> = ({
               />
 
               {fileData ? (
-                <div className="flex items-center justify-between gap-3 text-left">
-                  <div className="flex items-center gap-3 overflow-hidden">
-                    <div className="p-2.5 rounded-lg bg-emerald-100 text-emerald-700 shrink-0">
-                      <FileText className="w-5 h-5" />
-                    </div>
-                    <div className="overflow-hidden">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-left bg-white p-3 rounded-xl border border-emerald-200/90 shadow-2xs">
+                  <div className="flex items-center gap-3 overflow-hidden w-full sm:w-auto">
+                    {/* Visual thumbnail if image */}
+                    {(fileType?.startsWith('image/') || fileData.startsWith('data:image/')) ? (
+                      <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0 group">
+                        <img 
+                          src={fileData} 
+                          alt="Thumbnail Lampiran" 
+                          className="w-full h-full object-cover"
+                        />
+                        <div 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowQuickPreview(true);
+                          }}
+                          className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Perbesar"
+                        >
+                          <Eye className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-3 rounded-xl bg-red-100 text-red-700 shrink-0">
+                        <FileText className="w-6 h-6" />
+                      </div>
+                    )}
+
+                    <div className="overflow-hidden flex-1">
                       <div className="text-xs font-bold text-slate-800 truncate">
                         {lampiranNama || 'Berkas Dokumen Terunggah'}
                       </div>
-                      <div className="text-[11px] text-slate-500 flex items-center gap-2">
-                        <span className="text-emerald-700 font-semibold">✓ Siap Disimpan & Dipratinjau</span>
+                      <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                          <Check className="w-3.5 h-3.5" /> Siap Dipratinjau
+                        </span>
                         {fileSize && (
                           <span>• {(fileSize / 1024).toFixed(1)} KB</span>
+                        )}
+                        {(fileType?.startsWith('image/') || fileData.startsWith('data:image/')) && (
+                          <span className="text-blue-600 font-medium">• Foto/Gambar</span>
+                        )}
+                        {(fileType === 'application/pdf' || fileData.startsWith('data:application/pdf')) && (
+                          <span className="text-red-600 font-medium">• PDF Dokumen</span>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowQuickPreview(true);
+                      }}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 rounded-lg border border-sky-200 transition-colors cursor-pointer"
+                      title="Lihat Pratinjau Dokumen"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Pratinjau</span>
+                    </button>
+
+                    {(fileType?.startsWith('image/') || fileData.startsWith('data:image/')) && (
+                      <button
+                        type="button"
+                        onClick={handleRotateUploadedImage}
+                        className="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                        title="Putar Gambar 90 Derajat (Cocok untuk Foto HP)"
+                      >
+                        <RotateCw className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Putar</span>
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         fileInputRef.current?.click();
                       }}
-                      className="px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-100/70 hover:bg-blue-100 rounded-md transition-colors"
+                      className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
                     >
-                      Ganti Berkas
+                      Ganti
                     </button>
+
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleRemoveFile();
                       }}
-                      className="p-1 text-rose-600 hover:bg-rose-100 rounded-md transition-colors"
+                      className="p-1.5 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors"
                       title="Hapus Berkas"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -647,6 +799,46 @@ export const SuratModal: React.FC<SuratModalProps> = ({
         </form>
 
       </div>
+
+      {/* Quick Preview Modal Overlay for mobile & desktop */}
+      {showQuickPreview && fileData && (
+        <div className="fixed inset-0 z-70 bg-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4">
+          <div className="bg-slate-900 rounded-2xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden shadow-2xl border border-slate-700">
+            <div className="px-4 py-2.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+              <span className="font-bold text-white text-xs sm:text-sm flex items-center gap-2 truncate">
+                <Eye className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span className="truncate">Pratinjau Berkas: {lampiranNama || 'Dokumen Terunggah'}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowQuickPreview(false)}
+                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-2 sm:p-3 overflow-auto flex-1 bg-slate-950">
+              <DocumentFileViewer
+                fileData={fileData}
+                fileType={fileType}
+                fileName={lampiranNama}
+              />
+            </div>
+            <div className="px-4 py-2.5 bg-slate-950 border-t border-slate-800 flex items-center justify-between">
+              <span className="text-[11px] text-slate-400">
+                Tekan tombol di atas untuk membuka di penampil HP atau memutar
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowQuickPreview(false)}
+                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+              >
+                Tutup Pratinjau
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

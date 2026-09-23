@@ -149,18 +149,40 @@ export const DetailSuratModal: React.FC<DetailSuratModalProps> = ({
           </div>
 
           {/* Lampiran & Berkas */}
-          {(item.lampiranJumlah || item.lampiranNama) && (
-            <div className="p-3 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Paperclip className="w-4 h-4 text-slate-500" />
-                <div>
-                  <span className="font-semibold text-slate-800">Lampiran Dokumen: </span>
-                  <span className="text-slate-600">{item.lampiranJumlah}</span>
+          {(item.lampiranJumlah || item.lampiranNama || item.fileData) && (
+            <div className="p-3.5 rounded-xl border border-blue-200 bg-blue-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                <div className="p-2 rounded-lg bg-blue-100 text-blue-700 shrink-0">
+                  <Paperclip className="w-4 h-4" />
+                </div>
+                <div className="truncate">
+                  <div className="font-semibold text-slate-800 text-xs">
+                    Lampiran Dokumen: <span className="text-slate-600 font-normal">{item.lampiranJumlah || '1 Berkas'}</span>
+                  </div>
                   {item.lampiranNama && (
-                    <span className="font-mono text-blue-700 ml-1.5 font-medium">({item.lampiranNama})</span>
+                    <div className="font-mono text-blue-700 text-[11px] truncate">{item.lampiranNama}</div>
+                  )}
+                  {item.fileData && (
+                    <span className="text-[10.5px] text-emerald-700 font-bold flex items-center gap-1 mt-0.5">
+                      ✓ Berkas Dokumen Asli Terunggah
+                    </span>
                   )}
                 </div>
               </div>
+
+              {item.fileData && onPreview && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onPreview(item);
+                  }}
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-xs shrink-0"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Lihat / Preview Berkas</span>
+                </button>
+              )}
             </div>
           )}
 

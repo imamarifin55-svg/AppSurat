@@ -9,7 +9,9 @@ import {
   Calendar, 
   Clock, 
   GraduationCap, 
-  Briefcase 
+  Briefcase,
+  Eye,
+  RotateCw
 } from 'lucide-react';
 
 interface SuratIzinModalProps {
@@ -68,13 +70,74 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({
 
   const processUploadedFile = (file: File) => {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setFileBuktiData(reader.result as string);
-      setFileBuktiType(file.type);
-      setFileBuktiNama(file.name);
+
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          const maxDim = 1600;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const optimized = canvas.toDataURL('image/jpeg', 0.85);
+            setFileBuktiData(optimized);
+            setFileBuktiType('image/jpeg');
+          } else {
+            setFileBuktiData(e.target?.result as string);
+            setFileBuktiType(file.type);
+          }
+          setFileBuktiNama(file.name);
+        };
+        img.onerror = () => {
+          setFileBuktiData(e.target?.result as string);
+          setFileBuktiType(file.type);
+          setFileBuktiNama(file.name);
+        };
+        img.src = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setFileBuktiData(reader.result as string);
+        setFileBuktiType(file.type);
+        setFileBuktiNama(file.name);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRotateBuktiImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!fileBuktiData) return;
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.height;
+      canvas.height = img.width;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate((90 * Math.PI) / 180);
+      ctx.drawImage(img, -img.width / 2, -img.height / 2);
+      const rotated = canvas.toDataURL('image/jpeg', 0.85);
+      setFileBuktiData(rotated);
     };
-    reader.readAsDataURL(file);
+    img.src = fileBuktiData;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -359,25 +422,48 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({
               />
 
               {fileBuktiData ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-left">
-                    <FileText className="w-5 h-5 text-emerald-600" />
-                    <div>
-                      <div className="text-xs font-bold text-slate-800">{fileBuktiNama}</div>
+                <div className="flex items-center justify-between gap-3 text-left">
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    {fileBuktiType?.startsWith('image/') || fileBuktiData.startsWith('data:image/') ? (
+                      <img
+                        src={fileBuktiData}
+                        alt="Bukti"
+                        className="w-12 h-12 rounded object-cover border border-slate-200 shrink-0"
+                      />
+                    ) : (
+                      <div className="p-2 rounded bg-emerald-100 text-emerald-700 shrink-0">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                    )}
+                    <div className="overflow-hidden">
+                      <div className="text-xs font-bold text-slate-800 truncate">{fileBuktiNama || 'Berkas Bukti'}</div>
                       <div className="text-[11px] text-emerald-700 font-semibold">✓ Berkas bukti terlampir</div>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setFileBuktiData(undefined);
-                      setFileBuktiNama('');
-                    }}
-                    className="p-1 text-rose-600 hover:bg-rose-100 rounded"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {(fileBuktiType?.startsWith('image/') || fileBuktiData.startsWith('data:image/')) && (
+                      <button
+                        type="button"
+                        onClick={handleRotateBuktiImage}
+                        className="p-1.5 text-slate-600 hover:bg-slate-100 rounded transition-colors"
+                        title="Putar 90 Derajat"
+                      >
+                        <RotateCw className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFileBuktiData(undefined);
+                        setFileBuktiNama('');
+                      }}
+                      className="p-1.5 text-rose-600 hover:bg-rose-100 rounded transition-colors"
+                      title="Hapus Berkas"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="text-xs text-slate-600">

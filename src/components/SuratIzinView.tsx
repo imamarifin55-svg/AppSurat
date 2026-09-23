@@ -21,6 +21,7 @@ import {
   FileText,
   UserCheck
 } from 'lucide-react';
+import { DocumentFileViewer } from './DocumentFileViewer';
 
 interface SuratIzinViewProps {
   items: SuratIzinItem[];
@@ -541,36 +542,18 @@ export const SuratIzinView: React.FC<SuratIzinViewProps> = ({
               {/* Berkas Bukti Lampiran Gambar / PDF jika ada */}
               {previewItem.fileBuktiData && (
                 <div className="p-4 bg-white border border-slate-200 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-bold text-slate-800 uppercase flex items-center gap-1.5">
                       <Paperclip className="w-4 h-4 text-blue-600" />
                       <span>Lampiran Bukti Foto / Dokumen ({previewItem.fileBuktiNama || 'Berkas'})</span>
                     </span>
-                    <a
-                      href={previewItem.fileBuktiData}
-                      download={previewItem.fileBuktiNama || 'Bukti_Izin'}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:underline"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Unduh</span>
-                    </a>
                   </div>
 
-                  {previewItem.fileBuktiType?.startsWith('image/') || previewItem.fileBuktiData.startsWith('data:image/') ? (
-                    <div className="p-2 bg-slate-100 rounded-lg flex justify-center">
-                      <img
-                        src={previewItem.fileBuktiData}
-                        alt="Bukti Izin"
-                        className="max-h-80 object-contain rounded border border-slate-300"
-                      />
-                    </div>
-                  ) : (
-                    <iframe
-                      src={previewItem.fileBuktiData}
-                      title="Bukti Dokumen"
-                      className="w-full h-80 border rounded-lg"
-                    />
-                  )}
+                  <DocumentFileViewer
+                    fileData={previewItem.fileBuktiData}
+                    fileType={previewItem.fileBuktiType}
+                    fileName={previewItem.fileBuktiNama}
+                  />
                 </div>
               )}
 
