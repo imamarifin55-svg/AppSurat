@@ -413,7 +413,7 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="application/pdf,image/*"
+                accept="application/pdf,image/*,.doc,.docx,.xls,.xlsx"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
                   if (f) processUploadedFile(f);

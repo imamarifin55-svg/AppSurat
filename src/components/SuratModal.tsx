@@ -602,7 +602,7 @@ export const SuratModal: React.FC<SuratModalProps> = ({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="application/pdf,image/*,.doc,.docx"
+                accept="application/pdf,image/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
                 onChange={handleFileInputChange}
                 className="hidden"
               />

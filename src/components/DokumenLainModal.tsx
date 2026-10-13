@@ -14,9 +14,15 @@ import {
   RotateCw,
   Eye,
   Sparkles,
-  CheckCircle2
+  CheckCircle2,
+  FileSpreadsheet,
+  FileCode,
+  FileArchive,
+  Image as ImageIcon,
+  File
 } from 'lucide-react';
 import { DocumentFileViewer } from './DocumentFileViewer';
+import { getFileTypeInfo, formatFileSize } from '../utils/fileHelpers';
 
 interface DokumenLainModalProps {
   isOpen: boolean;
@@ -470,16 +476,40 @@ export const DokumenLainModal: React.FC<DokumenLainModalProps> = ({
               />
             </div>
 
-            {/* Row 7: Upload Berkas Dokumen (PDF / Scan / Foto) */}
+            {/* Row 7: Upload Berkas Dokumen Multi-Format (PDF, Word, Excel, Foto, dll) */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-                <span>Unggah Berkas Dokumen (PDF / Gambar / Foto Lembar Soal)</span>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-slate-700">
+                  Unggah Berkas Dokumen / Soal <span className="text-slate-400 font-normal">(PDF, Word, Excel, Foto, dll)</span>
+                </label>
                 {fileData && (
                   <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Berkas Terlampir
                   </span>
                 )}
-              </label>
+              </div>
+
+              {/* Format pills */}
+              <div className="flex flex-wrap items-center gap-1.5 mb-2 text-[10px]">
+                <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 font-medium">
+                  📄 PDF
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-medium">
+                  📝 Word (.doc, .docx)
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">
+                  📊 Excel (.xls, .xlsx, .csv)
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 font-medium">
+                  🖼️ Foto / Scan (Kamera HP)
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 font-medium">
+                  📽️ PPT
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-medium">
+                  📁 File Lain
+                </span>
+              </div>
 
               <div
                 onDragOver={(e) => {
@@ -498,14 +528,14 @@ export const DokumenLainModal: React.FC<DokumenLainModalProps> = ({
                   isDragOver
                     ? 'border-blue-500 bg-blue-50/70'
                     : fileData
-                    ? 'border-emerald-300 bg-emerald-50/40'
-                    : 'border-slate-300 bg-white hover:border-blue-400'
+                    ? 'border-emerald-300 bg-emerald-50/30'
+                    : 'border-slate-300 bg-white hover:border-blue-400 hover:bg-slate-50/50'
                 }`}
               >
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="application/pdf,image/*"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,image/*,.jpg,.jpeg,.png,.webp,.txt,.csv,.zip,.rar"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
                     if (f) processUploadedFile(f);
@@ -514,84 +544,100 @@ export const DokumenLainModal: React.FC<DokumenLainModalProps> = ({
                 />
 
                 {fileData ? (
-                  <div className="flex items-center justify-between gap-3 text-left">
-                    <div className="flex items-center gap-3 overflow-hidden">
-                      {fileType?.startsWith('image/') || fileData.startsWith('data:image/') ? (
-                        <img
-                          src={fileData}
-                          alt="Thumbnail Berkas"
-                          className="w-12 h-12 rounded-lg object-cover border border-slate-200 shrink-0 shadow-xs"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-200">
-                          <FileText className="w-6 h-6" />
-                        </div>
-                      )}
-                      <div className="overflow-hidden">
-                        <div className="text-xs font-bold text-slate-800 truncate">
-                          {fileName || 'Berkas Dokumen'}
-                        </div>
-                        <div className="text-[11px] text-emerald-700 font-medium flex items-center gap-1.5 mt-0.5">
-                          <span>{fileType === 'application/pdf' ? 'Dokumen PDF' : 'File Foto/Scan'}</span>
-                          {fileSize && (
-                            <>
-                              <span>•</span>
-                              <span>{(fileSize / 1024).toFixed(0)} KB</span>
-                            </>
+                  (() => {
+                    const info = getFileTypeInfo(fileName, fileType, fileData);
+                    return (
+                      <div className="flex items-center justify-between gap-3 text-left">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          {/* Thumbnail / Icon by file type */}
+                          {info.category === 'image' ? (
+                            <img
+                              src={fileData}
+                              alt="Thumbnail Foto"
+                              className="w-12 h-12 rounded-lg object-cover border border-purple-200 shrink-0 shadow-xs"
+                            />
+                          ) : (
+                            <div className={`w-12 h-12 rounded-lg ${info.iconBg} ${info.iconColor} flex items-center justify-center shrink-0 border border-slate-200 shadow-2xs`}>
+                              {info.category === 'pdf' && <FileText className="w-6 h-6" />}
+                              {info.category === 'word' && <FileText className="w-6 h-6" />}
+                              {info.category === 'excel' && <FileSpreadsheet className="w-6 h-6" />}
+                              {info.category === 'powerpoint' && <FileCode className="w-6 h-6" />}
+                              {info.category === 'text' && <FileCode className="w-6 h-6" />}
+                              {info.category === 'archive' && <FileArchive className="w-6 h-6" />}
+                              {info.category === 'other' && <File className="w-6 h-6" />}
+                            </div>
                           )}
+
+                          <div className="overflow-hidden">
+                            <div className="text-xs font-bold text-slate-800 truncate" title={fileName}>
+                              {fileName || 'Berkas Dokumen'}
+                            </div>
+                            <div className="text-[11px] font-medium flex items-center gap-1.5 mt-0.5">
+                              <span className={`px-1.5 py-0.2 rounded font-semibold text-[10px] ${info.badgeBg} ${info.badgeText} border ${info.badgeBorder}`}>
+                                {info.shortLabel}
+                              </span>
+                              <span className="text-slate-600 truncate">{info.label}</span>
+                              {fileSize && (
+                                <>
+                                  <span className="text-slate-300">•</span>
+                                  <span className="text-slate-500 font-mono">{formatFileSize(fileSize)}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowQuickPreview(true);
+                            }}
+                            className="px-2.5 py-1.5 text-xs font-semibold text-blue-700 bg-blue-100/80 hover:bg-blue-200 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+                            title="Pratinjau / Periksa Berkas"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Pratinjau</span>
+                          </button>
+
+                          {info.category === 'image' && (
+                            <button
+                              type="button"
+                              onClick={handleRotateImage}
+                              className="p-1.5 text-slate-600 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                              title="Putar Foto 90 Derajat"
+                            >
+                              <RotateCw className="w-4 h-4" />
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFileData(undefined);
+                              setFileName('');
+                              setFileType(undefined);
+                              setFileSize(undefined);
+                            }}
+                            className="p-1.5 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer"
+                            title="Hapus Lampiran"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowQuickPreview(true);
-                        }}
-                        className="px-2.5 py-1.5 text-xs font-semibold text-blue-700 bg-blue-100/80 hover:bg-blue-200 rounded-lg flex items-center gap-1 transition-colors"
-                        title="Pratinjau Berkas"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Pratinjau</span>
-                      </button>
-
-                      {(fileType?.startsWith('image/') || fileData.startsWith('data:image/')) && (
-                        <button
-                          type="button"
-                          onClick={handleRotateImage}
-                          className="p-1.5 text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
-                          title="Putar Foto 90 Derajat"
-                        >
-                          <RotateCw className="w-4 h-4" />
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setFileData(undefined);
-                          setFileName('');
-                          setFileType(undefined);
-                          setFileSize(undefined);
-                        }}
-                        className="p-1.5 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors"
-                        title="Hapus Lampiran"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
+                    );
+                  })()
                 ) : (
                   <div className="text-center py-2 text-xs text-slate-600">
                     <UploadCloud className="w-7 h-7 text-blue-500 mx-auto mb-1.5" />
                     <p className="font-semibold text-slate-700">
-                      Klik atau seret berkas lembar soal / PDF / foto ke sini
+                      Klik atau seret berkas ke sini untuk mengunggah
                     </p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      Mendukung PDF, Foto Kamera HP, dan Gambar Scan (Otomatis Dioptimasi)
+                      Bisa berupa file PDF, Dokumen Word, Tabel Excel, Foto/Scan Kamera HP, dll.
                     </p>
                   </div>
                 )}

@@ -14,8 +14,16 @@ import {
   Eye,
   RefreshCw,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  FileSpreadsheet,
+  FileCheck2,
+  FileArchive,
+  Image as ImageIcon,
+  CheckCircle2,
+  FileCode,
+  File
 } from 'lucide-react';
+import { getFileTypeInfo, dataUrlToBlob, triggerFileDownload, formatFileSize } from '../utils/fileHelpers';
 
 interface DocumentFileViewerProps {
   fileData?: string;
@@ -25,24 +33,8 @@ interface DocumentFileViewerProps {
   compact?: boolean;
 }
 
-// Convert data URL (base64) to native Blob for reliable mobile viewing
-export function dataUrlToBlob(dataUrl: string): Blob {
-  try {
-    const parts = dataUrl.split(',');
-    const mimeMatch = parts[0].match(/:(.*?);/);
-    const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
-    const bstr = atob(parts[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) {
-      u8arr[n] = bstr.charCodeAt(n);
-    }
-    return new Blob([u8arr], { type: mime });
-  } catch (err) {
-    console.error('Failed to convert dataUrl to Blob:', err);
-    return new Blob([], { type: 'application/octet-stream' });
-  }
-}
+// Re-export for compatibility
+export { dataUrlToBlob };
 
 // Dynamically load PDF.js from official cdnjs
 let pdfjsPromise: Promise<any> | null = null;
@@ -74,7 +66,7 @@ function loadPdfJs(): Promise<any> {
 export const DocumentFileViewer: React.FC<DocumentFileViewerProps> = ({
   fileData,
   fileType,
-  fileName,
+  fileName = 'Berkas Dokumen',
   className = '',
   compact = false
 }) => {
@@ -87,55 +79,168 @@ export const DocumentFileViewer: React.FC<DocumentFileViewerProps> = ({
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [textContent, setTextContent] = useState<string | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  if (!fileData) {
-    return (
-      <div className="p-6 text-center bg-slate-50 border border-dashed border-slate-200 rounded-xl">
-        <FileText className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-        <p className="text-xs text-slate-500 font-medium">Tidak ada berkas yang diunggah.</p>
-      </div>
-    );
-  }
-
-  const isImage = 
-    fileType?.startsWith('image/') || 
-    fileData.startsWith('data:image/') ||
-    /\.(jpe?g|png|webp|gif|svg)$/i.test(fileName || '');
-
-  const isPdf = 
-    fileType === 'application/pdf' || 
-    fileData.startsWith('data:application/pdf') ||
-    /\.pdf$/i.test(fileName || '');
+  const fileInfo = getFileTypeInfo(fileName, fileType, fileData);
+  const isImage = fileInfo.category === 'image';
+  const isPdf = fileInfo.category === 'pdf';
+  const isWord = fileInfo.category === 'word';
+  const isExcel = fileInfo.category === 'excel';
+  const isPowerPoint = fileInfo.category === 'powerpoint';
+  const isText = fileInfo.category === 'text';
+  const isArchive = fileInfo.category === 'archive';
 
   // Generate Blob URL once for download and native viewer
   useEffect(() => {
+    if (!fileData) {
+      setBlobUrl(null);
+      setTextContent(null);
+      return;
+    }
+
     try {
       const blob = dataUrlToBlob(fileData);
       const url = URL.createObjectURL(blob);
       setBlobUrl(url);
+
+      // If text or CSV, decode for preview
+      if (isText || (isExcel && fileName.toLowerCase().endsWith('.csv'))) {
+        try {
+          const parts = fileData.split(',');
+          if (parts[1]) {
+            const decoded = atob(parts[1]);
+            setTextContent(decoded.slice(0, 10000)); // limit preview length
+          }
+        } catch {
+          setTextContent(null);
+        }
+      }
+
       return () => {
         URL.revokeObjectURL(url);
       };
     } catch {
       setBlobUrl(null);
     }
-  }, [fileData]);
+  }, [fileData, isText, isExcel, fileName]);
 
-  // Open in native mobile tab or PDF viewer
+  // Load and render PDF using PDF.js
+  useEffect(() => {
+    if (!isPdf || !fileData) return;
+
+    let isCancelled = false;
+    setPdfLoading(true);
+    setPdfError(null);
+
+    const initPdf = async () => {
+      try {
+        const pdfjs = await loadPdfJs();
+        if (isCancelled) return;
+
+        // Convert dataUrl to array buffer
+        const parts = fileData.split(',');
+        const binaryString = atob(parts[1] || parts[0]);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        const loadingTask = pdfjs.getDocument({ data: bytes });
+        const doc = await loadingTask.promise;
+        if (isCancelled) return;
+
+        setPdfDoc(doc);
+        setNumPages(doc.numPages);
+        setCurrentPage(1);
+        setPdfLoading(false);
+      } catch (err: any) {
+        if (!isCancelled) {
+          console.warn('PDF.js inline rendering issue, fallback to native open:', err);
+          setPdfError(err?.message || 'Gagal merender halaman PDF');
+          setPdfLoading(false);
+        }
+      }
+    };
+
+    initPdf();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isPdf, fileData]);
+
+  // Render current PDF page to canvas
+  useEffect(() => {
+    if (!isPdf || !pdfDoc || !canvasRef.current) return;
+
+    let renderTask: any = null;
+
+    const renderPage = async () => {
+      try {
+        const page = await pdfDoc.getPage(currentPage);
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        // Calculate responsive viewport scale
+        const containerWidth = containerRef.current?.clientWidth || 700;
+        const unscaledViewport = page.getViewport({ scale: 1 });
+        const targetWidth = Math.min(containerWidth - 32, 900);
+        const baseScale = targetWidth / unscaledViewport.width;
+        const effectiveScale = (baseScale > 0 ? baseScale : 1.2) * zoom;
+
+        const viewport = page.getViewport({ scale: effectiveScale, rotation });
+
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        const renderContext = {
+          canvasContext: ctx,
+          viewport: viewport
+        };
+
+        renderTask = page.render(renderContext);
+        await renderTask.promise;
+      } catch (err: any) {
+        if (err?.name !== 'RenderingCancelledException') {
+          console.error('Error rendering PDF page:', err);
+        }
+      }
+    };
+
+    renderPage();
+
+    return () => {
+      if (renderTask) {
+        renderTask.cancel();
+      }
+    };
+  }, [isPdf, pdfDoc, currentPage, zoom, rotation]);
+
+  const handleZoomIn = () => setZoom((z) => Math.min(z + 0.25, 3));
+  const handleZoomOut = () => setZoom((z) => Math.max(z - 0.25, 0.5));
+  const handleResetZoom = () => {
+    setZoom(1);
+    setRotation(0);
+  };
+  const handleRotate = () => setRotation((r) => (r + 90) % 360);
+
   const handleOpenInMobileTab = () => {
     if (blobUrl) {
       const newWin = window.open(blobUrl, '_blank');
       if (!newWin) {
-        // Fallback for pop-up blocked
         const a = document.createElement('a');
         a.href = blobUrl;
         a.target = '_blank';
         a.click();
       }
-    } else {
+    } else if (fileData) {
       const a = document.createElement('a');
       a.href = fileData;
       a.target = '_blank';
@@ -144,205 +249,107 @@ export const DocumentFileViewer: React.FC<DocumentFileViewerProps> = ({
   };
 
   const handleDownload = () => {
-    const a = document.createElement('a');
-    a.href = blobUrl || fileData;
-    a.download = fileName || `Berkas-${Date.now()}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    if (fileData) {
+      triggerFileDownload(fileData, fileName || `Berkas-${Date.now()}`);
+    }
   };
 
-  const handleRotate = () => {
-    setRotation((prev) => (prev + 90) % 360);
-  };
-
-  const handleZoomIn = () => {
-    setZoom((prev) => Math.min(prev + 0.25, 3));
-  };
-
-  const handleZoomOut = () => {
-    setZoom((prev) => Math.max(prev - 0.25, 0.5));
-  };
-
-  const handleResetZoom = () => {
-    setZoom(1);
-    setRotation(0);
-  };
-
-  // Load PDF with PDF.js for crisp canvas rendering across mobile and desktop
-  useEffect(() => {
-    if (!isPdf) return;
-
-    let isMounted = true;
-    setPdfLoading(true);
-    setPdfError(null);
-
-    loadPdfJs()
-      .then(async (pdfjsLib) => {
-        if (!isMounted) return;
-        try {
-          const parts = fileData.split(',');
-          const base64Data = parts[1] || parts[0];
-          const binaryString = atob(base64Data);
-          const bytes = new Uint8Array(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
-
-          const loadingTask = pdfjsLib.getDocument({ data: bytes });
-          const doc = await loadingTask.promise;
-          if (isMounted) {
-            setPdfDoc(doc);
-            setNumPages(doc.numPages);
-            setCurrentPage(1);
-            setPdfLoading(false);
-          }
-        } catch (err: any) {
-          console.error('Error loading PDF bytes:', err);
-          if (isMounted) {
-            setPdfError('Format PDF memerlukan pembuka eksternal.');
-            setPdfLoading(false);
-          }
-        }
-      })
-      .catch((err) => {
-        console.error('Error loading PDF.js library:', err);
-        if (isMounted) {
-          setPdfError('Pustaka penampil PDF tidak dapat dimuat.');
-          setPdfLoading(false);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [fileData, isPdf]);
-
-  // Render current PDF page to canvas
-  useEffect(() => {
-    if (!pdfDoc || !canvasRef.current || !isPdf) return;
-
-    let renderTask: any = null;
-    let isCancelled = false;
-
-    pdfDoc.getPage(currentPage).then((page: any) => {
-      if (isCancelled || !canvasRef.current) return;
-
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      // Base width fitted to container or screen
-      const containerWidth = containerRef.current?.clientWidth || 360;
-      const unscaledViewport = page.getViewport({ scale: 1 });
-      const fitScale = (containerWidth - 24) / unscaledViewport.width;
-      
-      // High-DPI sharpness adjustment (devicePixelRatio)
-      const dpr = window.devicePixelRatio || 1;
-      const finalScale = Math.max(fitScale, 0.6) * zoom;
-      const viewport = page.getViewport({ scale: finalScale * dpr, rotation });
-
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      canvas.style.width = `${viewport.width / dpr}px`;
-      canvas.style.height = `${viewport.height / dpr}px`;
-
-      const renderContext = {
-        canvasContext: ctx,
-        viewport: viewport
-      };
-
-      renderTask = page.render(renderContext);
-      renderTask.promise.catch((err: any) => {
-        if (err?.name !== 'RenderingCancelledException') {
-          console.warn('PDF render notice:', err);
-        }
-      });
-    });
-
-    return () => {
-      isCancelled = true;
-      if (renderTask) {
-        renderTask.cancel();
-      }
-    };
-  }, [pdfDoc, currentPage, zoom, rotation, isPdf]);
+  if (!fileData) {
+    return (
+      <div className={`p-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-xl ${className}`}>
+        <FileText className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+        <p className="text-xs text-slate-500 font-medium">Tidak ada berkas yang diunggah.</p>
+      </div>
+    );
+  }
 
   return (
-    <div 
+    <div
       ref={containerRef}
-      className={`flex flex-col bg-slate-900/90 rounded-2xl overflow-hidden shadow-xl border border-slate-700/60 ${className} ${
-        isFullscreen ? 'fixed inset-0 z-100 rounded-none h-screen' : ''
+      className={`relative flex flex-col bg-slate-900 rounded-xl overflow-hidden shadow-xl border border-slate-800 ${className} ${
+        isFullscreen ? 'fixed inset-0 z-100 rounded-none border-none' : ''
       }`}
     >
       {/* Top Toolbar */}
-      <div className="px-3 sm:px-4 py-2.5 bg-slate-950/90 border-b border-slate-800 text-white flex flex-wrap items-center justify-between gap-2 z-10">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="p-1.5 rounded-lg bg-blue-600/80 text-white shrink-0">
-            {isPdf ? <FileText className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+      <div className="px-3 sm:px-4 py-2.5 bg-slate-950 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-white">
+        {/* File Name & Format Badge */}
+        <div className="flex items-center gap-2 overflow-hidden max-w-[65%] sm:max-w-[70%]">
+          <div className={`p-1.5 rounded-lg shrink-0 ${fileInfo.iconBg} ${fileInfo.iconColor}`}>
+            {isImage && <ImageIcon className="w-4 h-4" />}
+            {isPdf && <FileText className="w-4 h-4" />}
+            {isWord && <FileText className="w-4 h-4" />}
+            {isExcel && <FileSpreadsheet className="w-4 h-4" />}
+            {isPowerPoint && <FileCode className="w-4 h-4" />}
+            {isText && <FileCode className="w-4 h-4" />}
+            {isArchive && <FileArchive className="w-4 h-4" />}
+            {!isImage && !isPdf && !isWord && !isExcel && !isPowerPoint && !isText && !isArchive && (
+              <File className="w-4 h-4" />
+            )}
           </div>
-          <div className="truncate">
-            <span className="text-xs font-bold text-slate-100 truncate block">
-              {fileName || (isPdf ? 'Dokumen PDF' : 'Berkas Lampiran')}
-            </span>
-            <span className="text-[10px] text-slate-400">
-              {isPdf ? 'Format PDF Dokumen Resmi' : isImage ? 'Format Gambar Scan/Foto' : 'Berkas Lampiran'}
-            </span>
+          <div className="overflow-hidden">
+            <div className="text-xs font-bold text-white truncate" title={fileName}>
+              {fileName}
+            </div>
+            <div className="text-[10px] text-slate-400 flex items-center gap-1.5">
+              <span className={`px-1.5 py-0.2 rounded font-semibold text-[10px] ${fileInfo.badgeBg} ${fileInfo.badgeText}`}>
+                {fileInfo.shortLabel}
+              </span>
+              <span>{fileInfo.label}</span>
+            </div>
           </div>
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-1.5 ml-auto">
-          {/* Zoom & Rotate Controls */}
-          <div className="flex items-center bg-slate-800/80 rounded-lg p-0.5 border border-slate-700">
-            <button
-              onClick={handleZoomOut}
-              className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors"
-              title="Perkecil (-)"
-            >
-              <ZoomOut className="w-3.5 h-3.5" />
-            </button>
-            <span className="text-[10px] font-mono text-slate-300 px-1 font-semibold min-w-9 text-center">
-              {Math.round(zoom * 100)}%
-            </span>
-            <button
-              onClick={handleZoomIn}
-              className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors"
-              title="Perbesar (+)"
-            >
-              <ZoomIn className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={handleRotate}
-              className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors ml-0.5"
-              title="Putar 90 Derajat"
-            >
-              <RotateCw className="w-3.5 h-3.5" />
-            </button>
-          </div>
+        <div className="flex items-center gap-1 sm:gap-1.5 ml-auto">
+          {/* Zoom & Rotate controls (Available for PDF and Images) */}
+          {(isImage || (isPdf && !pdfError)) && (
+            <>
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                title="Perkecil (-)"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </button>
+              <span className="text-[11px] font-mono text-slate-400 min-w-[36px] text-center hidden sm:inline">
+                {Math.round(zoom * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                title="Perbesar (+)"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={handleRotate}
+                className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                title="Putar 90 Derajat"
+              >
+                <RotateCw className="w-4 h-4" />
+              </button>
+            </>
+          )}
 
-          {/* Dedicated Mobile & Fullscreen Action */}
+          {/* Download Button */}
           <button
-            onClick={handleOpenInMobileTab}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-colors shadow-xs cursor-pointer"
-            title="Buka Langsung di Penampil HP / Tab Baru"
-          >
-            <Smartphone className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden sm:inline">Buka di HP</span>
-            <ExternalLink className="w-3 h-3 shrink-0 ml-0.5" />
-          </button>
-
-          <button
+            type="button"
             onClick={handleDownload}
-            className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors border border-slate-700"
-            title="Unduh Berkas Asli"
+            className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 shadow-sm transition-colors cursor-pointer"
+            title="Unduh Berkas ke Komputer / HP"
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Unduh</span>
           </button>
 
+          {/* Fullscreen Toggle */}
           <button
+            type="button"
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors border border-slate-700"
+            className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
             title={isFullscreen ? 'Keluar Layar Penuh' : 'Layar Penuh'}
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -350,16 +357,16 @@ export const DocumentFileViewer: React.FC<DocumentFileViewerProps> = ({
         </div>
       </div>
 
-      {/* Main Preview Canvas / Container */}
-      <div className={`relative flex-1 overflow-auto bg-slate-950 flex items-center justify-center p-3 sm:p-4 min-h-[360px] sm:min-h-[480px] max-h-[75vh] select-none ${
+      {/* Main Preview Container */}
+      <div className={`relative flex-1 overflow-auto bg-slate-950 flex items-center justify-center p-3 sm:p-5 min-h-[360px] sm:min-h-[480px] max-h-[75vh] select-none ${
         isFullscreen ? 'max-h-none h-[calc(100vh-80px)]' : ''
       }`}>
-        {/* Render Image File */}
+        {/* 1. Render Image File */}
         {isImage && (
-          <div className="flex items-center justify-center w-full h-full overflow-auto">
+          <div className="flex items-center justify-center w-full h-full overflow-auto p-2">
             <img
               src={fileData}
-              alt={fileName || 'Pratinjau Gambar'}
+              alt={fileName}
               style={{
                 transform: `scale(${zoom}) rotate(${rotation}deg)`,
                 transition: 'transform 0.2s ease-out'
@@ -369,7 +376,7 @@ export const DocumentFileViewer: React.FC<DocumentFileViewerProps> = ({
           </div>
         )}
 
-        {/* Render PDF File with PDF.js Canvas */}
+        {/* 2. Render PDF File with PDF.js Canvas */}
         {isPdf && (
           <div className="flex flex-col items-center justify-center w-full min-h-full">
             {pdfLoading && (
@@ -381,7 +388,7 @@ export const DocumentFileViewer: React.FC<DocumentFileViewerProps> = ({
             )}
 
             {pdfError && (
-              <div className="max-w-md p-6 bg-slate-900 border border-slate-800 rounded-xl text-center text-slate-300 my-6 shadow-xl">
+              <div className="max-w-md p-6 bg-slate-900 border border-slate-800 rounded-2xl text-center text-slate-300 my-6 shadow-xl">
                 <AlertCircle className="w-10 h-10 text-amber-400 mx-auto mb-2" />
                 <h4 className="text-sm font-bold text-white mb-1">Pratinjau Dokumen PDF</h4>
                 <p className="text-xs text-slate-400 mb-4">
@@ -418,42 +425,209 @@ export const DocumentFileViewer: React.FC<DocumentFileViewerProps> = ({
           </div>
         )}
 
-        {/* Fallback for other file types */}
-        {!isImage && !isPdf && (
-          <div className="p-8 text-center bg-slate-900 rounded-xl border border-slate-800 max-w-sm">
-            <FileText className="w-12 h-12 text-blue-400 mx-auto mb-2" />
-            <h4 className="text-sm font-bold text-white">{fileName || 'Berkas Dokumen'}</h4>
-            <p className="text-xs text-slate-400 mt-1 mb-4">
-              Format berkas ini dapat dibuka langsung pada aplikasi penampil perangkat Anda.
+        {/* 3. Render Microsoft Word Document (.doc, .docx) */}
+        {isWord && (
+          <div className="max-w-md w-full bg-slate-900 rounded-2xl border border-blue-900/60 p-6 shadow-2xl text-center">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 text-white flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/20 border border-blue-400/30">
+              <FileText className="w-8 h-8" />
+            </div>
+
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase tracking-wider inline-block mb-2">
+              Microsoft Word Document
+            </span>
+
+            <h3 className="text-base font-bold text-white mb-2 leading-snug px-2">
+              {fileName}
+            </h3>
+
+            <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+              {fileInfo.appDescription}
             </p>
-            <div className="flex items-center justify-center gap-2">
+
+            <div className="bg-slate-950/70 rounded-xl p-3.5 border border-slate-800 text-left mb-6 space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>Format Dokumen:</span>
+                <span className="font-semibold text-blue-400">{fileInfo.extension.toUpperCase()}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>Status Berkas:</span>
+                <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Tersimpan Utuh
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5">
+              <button
+                onClick={handleDownload}
+                className="w-full sm:w-auto flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-blue-600/20 transition-all cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>Unduh Dokumen Word</span>
+              </button>
               <button
                 onClick={handleOpenInMobileTab}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-colors cursor-pointer"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>Buka di Perangkat</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 4. Render Microsoft Excel Spreadsheet (.xls, .xlsx, .csv) */}
+        {isExcel && (
+          <div className="max-w-lg w-full bg-slate-900 rounded-2xl border border-emerald-900/60 p-6 shadow-2xl text-center">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/20 border border-emerald-400/30">
+              <FileSpreadsheet className="w-8 h-8" />
+            </div>
+
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider inline-block mb-2">
+              Microsoft Excel Spreadsheet
+            </span>
+
+            <h3 className="text-base font-bold text-white mb-2 leading-snug px-2">
+              {fileName}
+            </h3>
+
+            <p className="text-xs text-slate-400 mb-5 leading-relaxed">
+              {fileInfo.appDescription}
+            </p>
+
+            {/* If CSV text content exists, show quick table/text peek */}
+            {textContent ? (
+              <div className="text-left bg-slate-950 rounded-xl p-3 mb-5 border border-slate-800 max-h-48 overflow-auto font-mono text-[11px] text-emerald-400">
+                <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1 pb-1 border-b border-slate-800">
+                  Pratinjau Data CSV:
+                </div>
+                <pre className="whitespace-pre-wrap">{textContent.slice(0, 800)}...</pre>
+              </div>
+            ) : (
+              <div className="bg-slate-950/70 rounded-xl p-3.5 border border-slate-800 text-left mb-6 space-y-2">
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span>Format Lembar Kerja:</span>
+                  <span className="font-semibold text-emerald-400">{fileInfo.extension.toUpperCase()}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span>Aplikasi Kompatibel:</span>
+                  <span className="text-slate-300 font-medium">MS Excel, Google Sheets, WPS</span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5">
+              <button
+                onClick={handleDownload}
+                className="w-full sm:w-auto flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>Unduh Lembar Kerja Excel</span>
+              </button>
+              <button
+                onClick={handleOpenInMobileTab}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-colors cursor-pointer"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>Buka di Perangkat</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 5. Render PowerPoint (.ppt, .pptx) */}
+        {isPowerPoint && (
+          <div className="max-w-md w-full bg-slate-900 rounded-2xl border border-amber-900/60 p-6 shadow-2xl text-center">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 text-white flex items-center justify-center mx-auto mb-4 shadow-lg shadow-amber-500/20 border border-amber-400/30">
+              <FileCode className="w-8 h-8" />
+            </div>
+
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider inline-block mb-2">
+              PowerPoint Presentation
+            </span>
+
+            <h3 className="text-base font-bold text-white mb-2 leading-snug px-2">
+              {fileName}
+            </h3>
+
+            <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+              {fileInfo.appDescription}
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5">
+              <button
+                onClick={handleDownload}
+                className="w-full sm:w-auto flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-amber-600/20 transition-all cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>Unduh Slide Presentasi</span>
+              </button>
+              <button
+                onClick={handleOpenInMobileTab}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-colors cursor-pointer"
               >
                 <ExternalLink className="w-4 h-4" />
                 <span>Buka Berkas</span>
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* 6. Render Plain Text / Code (.txt, etc.) */}
+        {isText && textContent && (
+          <div className="w-full max-w-2xl bg-slate-900 rounded-2xl border border-slate-800 p-5 shadow-2xl text-left flex flex-col max-h-[65vh]">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+              <span className="text-xs font-bold text-slate-300 font-mono">
+                {fileName}
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-semibold uppercase">
+                Pratinjau Teks
+              </span>
+            </div>
+            <div className="flex-1 overflow-auto bg-slate-950 p-4 rounded-xl font-mono text-xs text-slate-200 whitespace-pre-wrap leading-relaxed border border-slate-800/80">
+              {textContent}
+            </div>
+          </div>
+        )}
+
+        {/* 7. Other File Formats (ZIP, Archive, etc.) */}
+        {!isImage && !isPdf && !isWord && !isExcel && !isPowerPoint && (!isText || !textContent) && (
+          <div className="p-8 text-center bg-slate-900 rounded-2xl border border-slate-800 max-w-sm w-full shadow-2xl">
+            <div className="w-16 h-16 rounded-2xl bg-slate-800 text-slate-300 flex items-center justify-center mx-auto mb-3 border border-slate-700">
+              <File className="w-8 h-8" />
+            </div>
+            <h4 className="text-sm font-bold text-white mb-1">{fileName}</h4>
+            <p className="text-xs text-slate-400 mt-1 mb-5">
+              {fileInfo.appDescription}
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
               <button
                 onClick={handleDownload}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors"
+                className="w-full sm:w-auto flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
               >
                 <Download className="w-4 h-4" />
-                <span>Unduh</span>
+                <span>Unduh Berkas</span>
+              </button>
+              <button
+                onClick={handleOpenInMobileTab}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-colors cursor-pointer"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>Buka</span>
               </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Bottom Bar: PDF Page Navigation or Mobile Helper */}
+      {/* Bottom Bar: PDF Page Navigation or Helper */}
       <div className="px-4 py-2 bg-slate-950 border-t border-slate-800/80 text-xs text-slate-400 flex flex-wrap items-center justify-between gap-2">
         {isPdf && numPages > 1 ? (
           <div className="flex items-center gap-2">
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage <= 1}
-              className="p-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 transition-colors"
+              className="p-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 transition-colors cursor-pointer"
               title="Halaman Sebelumnya"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -464,7 +638,7 @@ export const DocumentFileViewer: React.FC<DocumentFileViewerProps> = ({
             <button
               onClick={() => setCurrentPage((p) => Math.min(numPages, p + 1))}
               disabled={currentPage >= numPages}
-              className="p-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 transition-colors"
+              className="p-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 transition-colors cursor-pointer"
               title="Halaman Selanjutnya"
             >
               <ChevronRight className="w-4 h-4" />
@@ -473,16 +647,28 @@ export const DocumentFileViewer: React.FC<DocumentFileViewerProps> = ({
         ) : (
           <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-            <span>Pratinjau responsif siap dibaca di layar HP & Komputer</span>
+            <span>Berkas tersimpan aman dan kompatibel dengan smartphone & komputer</span>
           </div>
         )}
 
         <div className="flex items-center gap-2 ml-auto text-[11px]">
+          {(isImage || isPdf) && (
+            <>
+              <button
+                onClick={handleResetZoom}
+                className="text-slate-400 hover:text-white transition-colors underline cursor-pointer"
+              >
+                Reset Tampilan
+              </button>
+              <span>•</span>
+            </>
+          )}
           <button
-            onClick={handleResetZoom}
-            className="text-slate-400 hover:text-white transition-colors underline cursor-pointer"
+            onClick={handleDownload}
+            className="text-blue-400 hover:text-blue-300 font-semibold transition-colors flex items-center gap-1 cursor-pointer"
           >
-            Reset Tampilan
+            <Download className="w-3 h-3" />
+            <span>Unduh Berkas</span>
           </button>
           <span>•</span>
           <button
@@ -490,7 +676,7 @@ export const DocumentFileViewer: React.FC<DocumentFileViewerProps> = ({
             className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors flex items-center gap-1 cursor-pointer"
           >
             <ExternalLink className="w-3 h-3" />
-            <span>Penampil Layar Penuh</span>
+            <span>Buka Langsung</span>
           </button>
         </div>
       </div>

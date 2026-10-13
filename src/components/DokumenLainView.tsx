@@ -19,12 +19,17 @@ import {
   CheckCircle2,
   ArrowUpRight,
   Sparkles,
-  Info
+  Info,
+  FileCode,
+  FileArchive,
+  Image as ImageIcon,
+  File
 } from 'lucide-react';
 import { DetailDokumenLainModal } from './DetailDokumenLainModal';
 import { PrintDokumenLainView } from './PrintDokumenLainView';
 import { PreviewModal } from './PreviewModal';
 import { DocumentFileViewer } from './DocumentFileViewer';
+import { getFileTypeInfo, formatFileSize, triggerFileDownload } from '../utils/fileHelpers';
 
 interface DokumenLainViewProps {
   items: DokumenLainItem[];
@@ -510,14 +515,35 @@ export const DokumenLainView: React.FC<DokumenLainViewProps> = ({
                       {/* Berkas File Preview CTA */}
                       <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                         {item.fileData ? (
-                          <button
-                            onClick={() => setPreviewFileItem(item)}
-                            className="px-2.5 py-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg flex items-center justify-center gap-1 mx-auto transition-colors shadow-xs"
-                            title="Pratinjau Berkas Dokumen"
-                          >
-                            <Eye className="w-3.5 h-3.5 text-blue-600" />
-                            <span>Preview</span>
-                          </button>
+                          (() => {
+                            const info = getFileTypeInfo(item.fileName, item.fileType, item.fileData);
+                            return (
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => setPreviewFileItem(item)}
+                                  className={`px-2 py-1 text-[11px] font-bold rounded-lg border flex items-center justify-center gap-1 transition-all shadow-xs cursor-pointer ${info.badgeBg} ${info.badgeText} ${info.badgeBorder} hover:brightness-95`}
+                                  title={`Buka Pratinjau ${info.label}`}
+                                >
+                                  {info.category === 'pdf' && <FileText className="w-3.5 h-3.5 text-rose-600" />}
+                                  {info.category === 'image' && <ImageIcon className="w-3.5 h-3.5 text-purple-600" />}
+                                  {info.category === 'word' && <FileText className="w-3.5 h-3.5 text-blue-600" />}
+                                  {info.category === 'excel' && <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />}
+                                  {info.category === 'powerpoint' && <FileCode className="w-3.5 h-3.5 text-amber-600" />}
+                                  {info.category === 'text' && <FileCode className="w-3.5 h-3.5 text-slate-600" />}
+                                  {info.category === 'archive' && <FileArchive className="w-3.5 h-3.5 text-indigo-600" />}
+                                  {info.category === 'other' && <File className="w-3.5 h-3.5 text-slate-600" />}
+                                  <span>{info.shortLabel}</span>
+                                </button>
+                                <button
+                                  onClick={() => triggerFileDownload(item.fileData!, item.fileName || item.judul)}
+                                  className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors cursor-pointer"
+                                  title={`Unduh ${item.fileName || 'Berkas'}`}
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            );
+                          })()
                         ) : (
                           <span className="text-[10px] text-slate-400 italic">Tanpa File</span>
                         )}
@@ -628,23 +654,43 @@ export const DokumenLainView: React.FC<DokumenLainViewProps> = ({
                 )}
               </div>
 
-              {/* Mobile Action Buttons (Direct Preview Button) */}
-              <div className="pt-2 flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
+              {/* Mobile Action Buttons (Direct Preview & Download) */}
+              <div className="pt-2 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
                 {item.fileData ? (
-                  <button
-                    onClick={() => setPreviewFileItem(item)}
-                    className="flex-1 py-2 px-3 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-colors"
-                  >
-                    <Eye className="w-4 h-4" />
-                    <span>Lihat / Preview Berkas</span>
-                  </button>
+                  (() => {
+                    const info = getFileTypeInfo(item.fileName, item.fileType, item.fileData);
+                    return (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setPreviewFileItem(item)}
+                          className="flex-1 py-2 px-3 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                        >
+                          <Eye className="w-4 h-4" />
+                          <span>Lihat {info.shortLabel}</span>
+                          {item.fileSize && (
+                            <span className="text-[10px] opacity-80 font-mono font-normal">
+                              ({formatFileSize(item.fileSize)})
+                            </span>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => triggerFileDownload(item.fileData!, item.fileName || item.judul)}
+                          className="p-2 text-slate-700 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 rounded-xl border border-slate-200 transition-colors cursor-pointer"
+                          title="Unduh Berkas"
+                        >
+                          <Download className="w-4 h-4 text-slate-600" />
+                        </button>
+                      </div>
+                    );
+                  })()
                 ) : (
-                  <div className="flex-1 py-1.5 text-center text-xs text-slate-400 italic">
+                  <div className="py-1 text-center text-xs text-slate-400 italic">
                     Tanpa Berkas Digital
                   </div>
                 )}
 
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center justify-end gap-1 shrink-0 pt-1 border-t border-slate-100">
                   <button
                     onClick={() => onEditItem(item)}
                     className="p-2 text-slate-600 hover:bg-slate-100 rounded-xl border border-slate-200"
@@ -699,12 +745,22 @@ export const DokumenLainView: React.FC<DokumenLainViewProps> = ({
                 {previewFileItem.judul}
               </div>
             </div>
-            <button
-              onClick={() => setPreviewFileItem(null)}
-              className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer shrink-0"
-            >
-              Tutup [✕]
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => triggerFileDownload(previewFileItem.fileData!, previewFileItem.fileName || previewFileItem.judul)}
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Unduh Berkas Ini"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Unduh Berkas</span>
+              </button>
+              <button
+                onClick={() => setPreviewFileItem(null)}
+                className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer shrink-0"
+              >
+                Tutup [✕]
+              </button>
+            </div>
           </div>
           <div className="flex-1 max-w-5xl w-full mx-auto bg-slate-900 rounded-2xl overflow-hidden shadow-2xl relative border border-white/10">
             <DocumentFileViewer

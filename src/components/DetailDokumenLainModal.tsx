@@ -16,9 +16,15 @@ import {
   Eye,
   CheckCircle2,
   Tag,
-  Clock
+  Clock,
+  FileSpreadsheet,
+  FileCode,
+  FileArchive,
+  Image as ImageIcon,
+  File
 } from 'lucide-react';
 import { DocumentFileViewer } from './DocumentFileViewer';
+import { getFileTypeInfo, formatFileSize, triggerFileDownload } from '../utils/fileHelpers';
 
 interface DetailDokumenLainModalProps {
   item: DokumenLainItem | null;
@@ -41,14 +47,11 @@ export const DetailDokumenLainModal: React.FC<DetailDokumenLainModalProps> = ({
 
   if (!isOpen || !item) return null;
 
+  const fileInfo = item.fileData ? getFileTypeInfo(item.fileName, item.fileType, item.fileData) : null;
+
   const handleDownloadFile = () => {
     if (!item.fileData) return;
-    const a = document.createElement('a');
-    a.href = item.fileData;
-    a.download = item.fileName || `Dokumen_${item.nomorDokumen.replace(/[^a-zA-Z0-9]/g, '_')}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    triggerFileDownload(item.fileData, item.fileName || `Dokumen_${item.nomorDokumen.replace(/[^a-zA-Z0-9]/g, '_')}`);
   };
 
   const handlePrintLembarIndeks = () => {
@@ -109,10 +112,12 @@ export const DetailDokumenLainModal: React.FC<DetailDokumenLainModalProps> = ({
               }`}
             >
               <Eye className="w-3.5 h-3.5" />
-              <span>Pratinjau Berkas Dokumen</span>
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-100 text-emerald-800 font-bold">
-                Ada
-              </span>
+              <span>Pratinjau Berkas</span>
+              {fileInfo && (
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${fileInfo.badgeBg} ${fileInfo.badgeText} border ${fileInfo.badgeBorder} font-bold`}>
+                  {fileInfo.shortLabel}
+                </span>
+              )}
             </button>
           </div>
         )}
@@ -215,24 +220,58 @@ export const DetailDokumenLainModal: React.FC<DetailDokumenLainModalProps> = ({
 
                   <div>
                     <div className="text-[11px] text-slate-500">Berkas Lampiran Digital:</div>
-                    {item.fileData ? (
-                      <div className="mt-1 flex items-center justify-between p-2 rounded-lg bg-blue-50/80 border border-blue-200">
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          <FileText className="w-4 h-4 text-blue-600 shrink-0" />
-                          <span className="font-semibold text-blue-900 truncate text-[11px]">
-                            {item.fileName || 'Berkas Terlampir'}
-                          </span>
+                    {item.fileData && fileInfo ? (
+                      <div className="mt-1 p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5 overflow-hidden">
+                          <div className={`w-8 h-8 rounded-lg ${fileInfo.iconBg} ${fileInfo.iconColor} flex items-center justify-center shrink-0 border border-slate-200`}>
+                            {fileInfo.category === 'pdf' && <FileText className="w-4 h-4" />}
+                            {fileInfo.category === 'image' && <ImageIcon className="w-4 h-4" />}
+                            {fileInfo.category === 'word' && <FileText className="w-4 h-4" />}
+                            {fileInfo.category === 'excel' && <FileSpreadsheet className="w-4 h-4" />}
+                            {fileInfo.category === 'powerpoint' && <FileCode className="w-4 h-4" />}
+                            {fileInfo.category === 'text' && <FileCode className="w-4 h-4" />}
+                            {fileInfo.category === 'archive' && <FileArchive className="w-4 h-4" />}
+                            {fileInfo.category === 'other' && <File className="w-4 h-4" />}
+                          </div>
+                          <div className="overflow-hidden">
+                            <div className="font-bold text-slate-800 truncate text-[11px]" title={item.fileName}>
+                              {item.fileName || 'Berkas Dokumen'}
+                            </div>
+                            <div className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                              <span className={`px-1.5 py-0.2 rounded font-semibold ${fileInfo.badgeBg} ${fileInfo.badgeText} border ${fileInfo.badgeBorder}`}>
+                                {fileInfo.shortLabel}
+                              </span>
+                              <span>{fileInfo.label}</span>
+                              {item.fileSize && (
+                                <>
+                                  <span>•</span>
+                                  <span className="font-mono text-slate-600">{formatFileSize(item.fileSize)}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <button
-                          onClick={handleDownloadFile}
-                          className="p-1 text-blue-700 hover:bg-blue-100 rounded shrink-0"
-                          title="Unduh Berkas"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                        </button>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => setActiveTab('file')}
+                            className="px-2 py-1 text-[11px] font-semibold text-blue-700 bg-blue-100/80 hover:bg-blue-200 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+                            title="Buka Pratinjau Berkas"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Pratinjau</span>
+                          </button>
+                          <button
+                            onClick={handleDownloadFile}
+                            className="p-1.5 text-slate-600 hover:text-blue-700 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                            title="Unduh Berkas"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     ) : (
-                      <div className="text-slate-400 italic mt-0.5">Tidak ada berkas digital terlampir</div>
+                      <div className="text-slate-400 italic mt-0.5 text-xs">Tidak ada berkas digital terlampir</div>
                     )}
                   </div>
 
