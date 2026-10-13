@@ -10,13 +10,13 @@ const targetDatabaseId =
     ? firebaseConfig.firestoreDatabaseId
     : undefined;
 
-// Initialize Firestore with robust connection settings (auto-detect long-polling for iframe/proxy environments)
+// Initialize Firestore with forced long-polling to prevent WebSocket timeouts in sandboxed iframe/proxy environments
 let firestoreInstance;
 try {
   firestoreInstance = initializeFirestore(
     app,
     {
-      experimentalAutoDetectLongPolling: true,
+      experimentalForceLongPolling: true,
       ignoreUndefinedProperties: true
     },
     targetDatabaseId
@@ -30,16 +30,18 @@ export const db = firestoreInstance;
 // Connection verification with safe fallback
 export async function testFirestoreConnection(): Promise<boolean> {
   try {
-    // Attempt ping with 4 second timeout so slow initial handshake doesn't hang UI
-    const pingPromise = getDocFromServer(doc(db, '_connection_test', 'ping'));
+    const pingPromise = getDocFromServer(doc(db, 'test', 'connection'));
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Connection check timeout')), 4000)
+      setTimeout(() => reject(new Error('Connection check timeout')), 8000)
     );
     await Promise.race([pingPromise, timeoutPromise]);
     return true;
   } catch (error: any) {
-    // If backend is still warming up or unavailable, client continues in offline cache mode
-    console.warn('Firestore connection check notice (client running with local-first cache):', error?.message || error);
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.warn('Firestore offline notice: client operating in local cache mode.');
+    } else {
+      console.warn('Firestore connection check notice:', error?.message || error);
+    }
     return false;
   }
 }
