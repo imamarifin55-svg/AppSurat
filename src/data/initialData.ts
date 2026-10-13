@@ -1,4 +1,4 @@
-import { SuratItem, IdentitasSekolah, SuratIzinItem } from '../types';
+import { SuratItem, IdentitasSekolah, SuratIzinItem, DokumenLainItem } from '../types';
 
 export const DEFAULT_LOGO_PEMDA = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120" width="100" height="120"><path d="M50 5 L88 22 L88 65 C88 92 50 114 50 114 C50 114 12 92 12 65 L12 22 Z" fill="%231e3a8a" stroke="%23f59e0b" stroke-width="3"/><path d="M50 15 L78 28 L78 62 C78 84 50 102 50 102 C50 102 22 84 22 62 L22 28 Z" fill="%230284c7"/><polygon points="50,24 53,33 63,33 55,39 58,48 50,42 42,48 45,39 37,33 47,33" fill="%23fbbf24"/><path d="M30 75 Q50 90 70 75" fill="none" stroke="%23fbbf24" stroke-width="4"/><circle cx="50" cy="58" r="14" fill="%23ffffff" stroke="%23f59e0b" stroke-width="2"/><path d="M42 58 L47 64 L58 52" fill="none" stroke="%2316a34a" stroke-width="3" stroke-linecap="round"/><text x="50" y="86" font-size="8" font-family="sans-serif" font-weight="bold" fill="%23ffffff" text-anchor="middle">PEMDA</text></svg>';
 
@@ -233,5 +233,110 @@ export const INITIAL_SURAT_IZIN: SuratIzinItem[] = [
     fileBuktiNama: 'Surat_Izin_Orang_Tua.pdf',
     createdAt: '2026-09-19T10:00:00Z',
     updatedAt: '2026-09-19T10:00:00Z'
+  }
+];
+
+export const INITIAL_DOKUMEN_LAIN: DokumenLainItem[] = [
+  {
+    id: 'dok-001',
+    nomorDokumen: 'ARS-2026/SL-001',
+    judul: 'Naskah Lembar Soal Sumatif Akhir Semester (SAS) Ganjil - IPA Kelas VIII',
+    kategori: 'Lembar Soal / Asesmen',
+    mataPelajaran: 'Ilmu Pengetahuan Alam (IPA)',
+    tingkatKelas: 'Kelas 8',
+    tahunAjaran: '2026/2027',
+    semester: 'Ganjil',
+    tanggalDokumen: '2026-10-02',
+    penyusun: 'Siti Rohani, S.Pd.',
+    lokasiFisik: 'Ordner Soal SAS Ganjil 2026 / Lemari 2 Rak B',
+    keterangan: 'Paket Utama 40 butir pilihan ganda dan 5 uraian. Telah divalidasi oleh Tim MGMP IPA Sekolah.',
+    fileName: 'Naskah_Soal_SAS_Ganjil_IPA_Kelas8.pdf',
+    createdAt: '2026-10-02T08:30:00Z',
+    updatedAt: '2026-10-02T08:30:00Z'
+  },
+  {
+    id: 'dok-002',
+    nomorDokumen: 'ARS-2026/KS-002',
+    judul: 'Kisi-Kisi Soal & Pedoman Penskoran Asesmen Matematika Kelas IX',
+    kategori: 'Kisi-Kisi & Kunci Jawaban',
+    mataPelajaran: 'Matematika',
+    tingkatKelas: 'Kelas 9',
+    tahunAjaran: '2026/2027',
+    semester: 'Ganjil',
+    tanggalDokumen: '2026-10-05',
+    penyusun: 'Bambang Supriyanto, S.Pd.',
+    lokasiFisik: 'Ordner Kisi-Kisi & Kunci / Lemari 2 Rak B',
+    keterangan: 'Dilengkapi rubrik penskoran soal HOTS materi Transformasi Geometri dan Bangun Ruang Sisi Lengkung.',
+    fileName: 'Kisi_Kisi_Matematika_Kelas9_2026.pdf',
+    createdAt: '2026-10-05T09:15:00Z',
+    updatedAt: '2026-10-05T09:15:00Z'
+  },
+  {
+    id: 'dok-003',
+    nomorDokumen: 'ARS-2026/MOD-003',
+    judul: 'Modul Ajar Kurikulum Merdeka - Informatika Fase D Kelas VII',
+    kategori: 'Perangkat Ajar / Modul',
+    mataPelajaran: 'Informatika',
+    tingkatKelas: 'Kelas 7',
+    tahunAjaran: '2026/2027',
+    semester: 'Ganjil',
+    tanggalDokumen: '2026-07-18',
+    penyusun: 'Tim MGMP Informatika SMPN 14 Tubaba',
+    lokasiFisik: 'Map Snelhecter Biru / Lemari Kurikulum Rak 1',
+    keterangan: 'Modul Ajar Bab 1-3 (Berpikir Komputasional, TIK, dan Sistem Komputer) lengkap dengan LKPD dan Asesmen Formatif.',
+    fileName: 'Modul_Ajar_Informatika_Fase_D_Kelas7.pdf',
+    createdAt: '2026-07-18T10:00:00Z',
+    updatedAt: '2026-07-18T10:00:00Z'
+  },
+  {
+    id: 'dok-004',
+    nomorDokumen: 'ARS-2026/SK-004',
+    judul: 'SK Kepala Sekolah tentang Pembagian Tugas Mengajar & Tugas Tambahan TP 2026/2027',
+    kategori: 'SK & Berita Acara',
+    mataPelajaran: 'Umum / Tata Usaha',
+    tingkatKelas: 'Guru / Tendik',
+    tahunAjaran: '2026/2027',
+    semester: 'Semua / Tahunan',
+    tanggalDokumen: '2026-07-15',
+    penyusun: 'Kaur Tata Usaha / Kepala Sekolah',
+    lokasiFisik: 'Ordner SK Resmi Sekolah / Lemari Kepala Sekolah',
+    keterangan: 'Surat Keputusan No: 421.3/045/SMPN14-TBB/2026 beserta lampiran pembagian jam mengajar 24 jam.',
+    fileName: 'SK_Pembagian_Tugas_Guru_Tendik_2026.pdf',
+    createdAt: '2026-07-15T11:00:00Z',
+    updatedAt: '2026-07-15T11:00:00Z'
+  },
+  {
+    id: 'dok-005',
+    nomorDokumen: 'ARS-2026/BA-005',
+    judul: 'Berita Acara & Daftar Hadir Pelaksanaan Simulasi ANBK SMP Tahun 2026',
+    kategori: 'SK & Berita Acara',
+    mataPelajaran: 'Umum / Laboratorium Komputer',
+    tingkatKelas: 'Kelas 8',
+    tahunAjaran: '2026/2027',
+    semester: 'Ganjil',
+    tanggalDokumen: '2026-09-30',
+    penyusun: 'Proktor & Teknisi ANBK',
+    lokasiFisik: 'Ordner ANBK 2026 / Ruang Lab Komputer',
+    keterangan: 'Berita acara pelaksanaan simulasi gelombang 1 dan 2 berjalan lancar dengan 45 peserta utama dan 5 cadangan.',
+    fileName: 'Berita_Acara_Simulasi_ANBK_2026.pdf',
+    createdAt: '2026-09-30T14:30:00Z',
+    updatedAt: '2026-09-30T14:30:00Z'
+  },
+  {
+    id: 'dok-006',
+    nomorDokumen: 'ARS-2026/LPJ-006',
+    judul: 'Laporan Pertanggungjawaban (LPJ) Kegiatan Masa Pengenalan Lingkungan Sekolah (MPLS)',
+    kategori: 'Laporan & LPJ',
+    mataPelajaran: 'Kesiswaan / OSIS',
+    tingkatKelas: 'Kelas 7',
+    tahunAjaran: '2026/2027',
+    semester: 'Ganjil',
+    tanggalDokumen: '2026-07-25',
+    penyusun: 'Panitia MPLS 2026',
+    lokasiFisik: 'Ordner Laporan Kegiatan Siswa / Ruang Waka Kesiswaan',
+    keterangan: 'Laporan pelaksanaan MPLS ramah anak, dokumentasi foto kegiatan, serta rincian penggunaan anggaran operasional.',
+    fileName: 'LPJ_Kegiatan_MPLS_2026_SMPN14.pdf',
+    createdAt: '2026-07-25T13:20:00Z',
+    updatedAt: '2026-07-25T13:20:00Z'
   }
 ];

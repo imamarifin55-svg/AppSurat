@@ -67,6 +67,37 @@ export interface SuratIzinItem {
   updatedAt: string;
 }
 
+export type KategoriDokumenLain = 
+  | 'Lembar Soal / Asesmen'
+  | 'Kisi-Kisi & Kunci Jawaban'
+  | 'Perangkat Ajar / Modul'
+  | 'Kurikulum & Jadwal'
+  | 'SK & Berita Acara'
+  | 'Laporan & LPJ'
+  | 'Dokumen Akreditasi'
+  | 'Lainnya';
+
+export interface DokumenLainItem {
+  id: string;
+  nomorDokumen: string; // e.g. "ARS-2026/SL-001" atau kode dokumen
+  judul: string; // e.g. "Naskah Soal Sumatif Akhir Semester Ganjil - IPA Kelas 8"
+  kategori: KategoriDokumenLain;
+  mataPelajaran?: string; // e.g. "IPA", "Matematika", "Bahasa Indonesia", dll.
+  tingkatKelas?: string; // e.g. "Kelas 7", "Kelas 8", "Kelas 9", "Semua Kelas", "Guru / Tendik"
+  tahunAjaran: string; // e.g. "2026/2027"
+  semester: 'Ganjil' | 'Genap' | 'Semua / Tahunan';
+  tanggalDokumen: string; // YYYY-MM-DD
+  penyusun: string; // Guru / Tim Penyusun / Tendik
+  lokasiFisik?: string; // Misal: "Ordner Soal Sem. 1 / Lemari 2 Rak A"
+  keterangan?: string;
+  fileName?: string;
+  fileData?: string; // Data URL Base64 file dokumen (PDF/Gambar/Scan)
+  fileType?: string; // MIME type
+  fileSize?: number; // Bytes
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface IdentitasSekolah {
   namaSekolah: string;
   npsn: string;

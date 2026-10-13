@@ -14,7 +14,8 @@ import {
   Award,
   MapPin,
   X,
-  UserCheck
+  UserCheck,
+  FolderArchive
 } from 'lucide-react';
 
 interface SidebarNavProps {
@@ -22,6 +23,7 @@ interface SidebarNavProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onOpenAddModal: (tipe: 'MASUK' | 'KELUAR') => void;
+  onOpenAddDokumenLain?: () => void;
   onOpenSettings: () => void;
   onOpenKlasifikasi: () => void;
   onExportCsv: () => void;
@@ -35,6 +37,7 @@ interface SidebarNavProps {
     pendingDisposisi: number;
     urgent: number;
     suratIzin?: number;
+    dokumenLain?: number;
   };
 }
 
@@ -43,6 +46,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   activeTab,
   setActiveTab,
   onOpenAddModal,
+  onOpenAddDokumenLain,
   onOpenSettings,
   onOpenKlasifikasi,
   onExportCsv,
@@ -75,6 +79,12 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
       label: 'Catatan Surat Izin',
       icon: UserCheck,
       count: itemsCount.suratIzin ?? 0
+    },
+    {
+      id: 'DOKUMEN_LAINNYA',
+      label: 'Arsip Dokumen Lainnya',
+      icon: FolderArchive,
+      count: itemsCount.dokumenLain ?? 0
     },
     {
       id: 'PERLU_DISPOSISI',
@@ -183,6 +193,20 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
             <Send className="w-4 h-4" />
             <span>Buat Surat Keluar</span>
           </button>
+
+          {onOpenAddDokumenLain && (
+            <button
+              id="btn-sidebar-tambah-dokumen"
+              onClick={() => {
+                onOpenAddDokumenLain();
+                setIsMobileOpen(false);
+              }}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors cursor-pointer border border-indigo-400/40"
+            >
+              <FolderArchive className="w-4 h-4" />
+              <span>Arsip Dokumen / Soal</span>
+            </button>
+          )}
         </div>
 
         {/* Navigation Menu */}

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { IdentitasSekolah, SuratItem } from '../types';
+import { IdentitasSekolah, SuratItem, SuratIzinItem, DokumenLainItem } from '../types';
 import { 
   X, 
   Building2, 
@@ -23,9 +23,16 @@ interface SchoolSettingsModalProps {
   onClose: () => void;
   sekolah: IdentitasSekolah;
   onSaveSekolah: (sekolah: IdentitasSekolah) => void | Promise<void>;
-  onRestoreData: (items: SuratItem[], sekolah: IdentitasSekolah) => void;
+  onRestoreData: (
+    items: SuratItem[],
+    sekolah: IdentitasSekolah,
+    suratIzin?: SuratIzinItem[],
+    dokumenLain?: DokumenLainItem[]
+  ) => void;
   onResetToDefault: () => void;
   items: SuratItem[];
+  suratIzinItems?: SuratIzinItem[];
+  dokumenLainItems?: DokumenLainItem[];
 }
 
 export const SchoolSettingsModal: React.FC<SchoolSettingsModalProps> = ({
@@ -35,7 +42,9 @@ export const SchoolSettingsModal: React.FC<SchoolSettingsModalProps> = ({
   onSaveSekolah,
   onRestoreData,
   onResetToDefault,
-  items
+  items,
+  suratIzinItems = [],
+  dokumenLainItems = []
 }) => {
   const [formData, setFormData] = useState<IdentitasSekolah>({ ...sekolah });
   const [successMsg, setSuccessMsg] = useState(false);
@@ -184,17 +193,19 @@ export const SchoolSettingsModal: React.FC<SchoolSettingsModalProps> = ({
   // Export full JSON backup
   const handleBackupJson = () => {
     const backupData = {
-      version: '1.0',
+      version: '2.0',
       exportedAt: new Date().toISOString(),
       sekolah: formData,
-      items
+      items,
+      suratIzinItems,
+      dokumenLainItems
     };
     const jsonStr = JSON.stringify(backupData, null, 2);
     const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Backup_Agenda_Surat_${formData.namaSekolah.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `Backup_Lengkap_Tata_Usaha_${formData.namaSekolah.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -211,7 +222,12 @@ export const SchoolSettingsModal: React.FC<SchoolSettingsModalProps> = ({
         const content = event.target?.result as string;
         const parsed = JSON.parse(content);
         if (parsed.items && Array.isArray(parsed.items)) {
-          onRestoreData(parsed.items, parsed.sekolah || formData);
+          onRestoreData(
+            parsed.items,
+            parsed.sekolah || formData,
+            Array.isArray(parsed.suratIzinItems) ? parsed.suratIzinItems : undefined,
+            Array.isArray(parsed.dokumenLainItems) ? parsed.dokumenLainItems : undefined
+          );
           alert('Berhasil memulihkan data dari berkas cadangan!');
           onClose();
         } else {

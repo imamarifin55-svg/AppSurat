@@ -4,8 +4,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { SuratItem, IdentitasSekolah, DisposisiData, TipeSurat, SuratIzinItem } from './types';
-import { INITIAL_SEKOLAH, INITIAL_SURAT, INITIAL_SURAT_IZIN } from './data/initialData';
+import { SuratItem, IdentitasSekolah, DisposisiData, TipeSurat, SuratIzinItem, DokumenLainItem } from './types';
+import { INITIAL_SEKOLAH, INITIAL_SURAT, INITIAL_SURAT_IZIN, INITIAL_DOKUMEN_LAIN } from './data/initialData';
 import { exportSuratToCsv } from './utils/formatters';
 
 import { SidebarNav } from './components/SidebarNav';
@@ -18,6 +18,8 @@ import { DetailSuratModal } from './components/DetailSuratModal';
 import { PreviewModal } from './components/PreviewModal';
 import { SuratIzinView } from './components/SuratIzinView';
 import { SuratIzinModal } from './components/SuratIzinModal';
+import { DokumenLainView } from './components/DokumenLainView';
+import { DokumenLainModal } from './components/DokumenLainModal';
 import { PrintDisposisiView } from './components/PrintDisposisiView';
 import { PrintBukuAgendaView } from './components/PrintBukuAgendaView';
 import { SchoolSettingsModal } from './components/SchoolSettingsModal';
@@ -27,11 +29,14 @@ import { CheckCircle2, AlertCircle, Cloud, RefreshCw } from 'lucide-react';
 import { 
   subscribeSurat, 
   subscribeSuratIzin, 
+  subscribeDokumenLain,
   subscribeSekolah, 
   saveSuratItem, 
   deleteSuratItem, 
   saveSuratIzinItem, 
   deleteSuratIzinItem, 
+  saveDokumenLainItem,
+  deleteDokumenLainItem,
   saveIdentitasSekolah, 
   seedInitialDataIfEmpty 
 } from './services/firestoreService';
@@ -40,6 +45,7 @@ import { testFirestoreConnection } from './lib/firebase';
 const STORAGE_KEY_ITEMS = 'agenda_surat_items_v2';
 const STORAGE_KEY_SEKOLAH = 'agenda_surat_sekolah_v2';
 const STORAGE_KEY_SURAT_IZIN = 'agenda_surat_izin_v1';
+const STORAGE_KEY_DOKUMEN_LAIN = 'agenda_dokumen_lain_v1';
 
 export default function App() {
   // Cloud & Sync state
@@ -65,6 +71,16 @@ export default function App() {
       console.error('Failed to load surat izin from localStorage', e);
     }
     return INITIAL_SURAT_IZIN;
+  });
+
+  const [dokumenLainItems, setDokumenLainItems] = useState<DokumenLainItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_DOKUMEN_LAIN);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error('Failed to load dokumen lain from localStorage', e);
+    }
+    return INITIAL_DOKUMEN_LAIN;
   });
 
   const [sekolah, setSekolah] = useState<IdentitasSekolah>(() => {
@@ -104,6 +120,14 @@ export default function App() {
 
   useEffect(() => {
     try {
+      localStorage.setItem(STORAGE_KEY_DOKUMEN_LAIN, JSON.stringify(dokumenLainItems));
+    } catch (e) {
+      console.error('Failed to save dokumen lain to localStorage', e);
+    }
+  }, [dokumenLainItems]);
+
+  useEffect(() => {
+    try {
       localStorage.setItem(STORAGE_KEY_SEKOLAH, JSON.stringify(sekolah));
     } catch (e) {
       console.error('Failed to save sekolah to localStorage', e);
@@ -121,7 +145,7 @@ export default function App() {
         if (isMounted) setIsCloudConnected(isConnected);
 
         // Seed initial data if Firestore collections are empty
-        await seedInitialDataIfEmpty(INITIAL_SURAT, INITIAL_SURAT_IZIN, INITIAL_SEKOLAH);
+        await seedInitialDataIfEmpty(INITIAL_SURAT, INITIAL_SURAT_IZIN, INITIAL_SEKOLAH, INITIAL_DOKUMEN_LAIN);
       } catch (err) {
         console.warn('Firestore initialization notice:', err);
       } finally {
@@ -156,6 +180,18 @@ export default function App() {
       (err) => console.warn('Surat Izin sync listener notice:', err)
     );
 
+    const unsubDokumen = subscribeDokumenLain(
+      (cloudDocs) => {
+        if (isMounted) {
+          setIsCloudConnected(true);
+          if (cloudDocs.length > 0) {
+            setDokumenLainItems(cloudDocs);
+          }
+        }
+      },
+      (err) => console.warn('Dokumen Lain sync listener notice:', err)
+    );
+
     const unsubSekolah = subscribeSekolah(
       (cloudSekolah) => {
         if (isMounted) {
@@ -178,6 +214,7 @@ export default function App() {
       isMounted = false;
       unsubSurat();
       unsubIzin();
+      unsubDokumen();
       unsubSekolah();
     };
   }, []);
@@ -191,6 +228,10 @@ export default function App() {
   // Surat Izin modal states
   const [isSuratIzinModalOpen, setIsSuratIzinModalOpen] = useState(false);
   const [editingSuratIzin, setEditingSuratIzin] = useState<SuratIzinItem | null>(null);
+
+  // Dokumen Lain modal states
+  const [isDokumenLainModalOpen, setIsDokumenLainModalOpen] = useState(false);
+  const [editingDokumenLain, setEditingDokumenLain] = useState<DokumenLainItem | null>(null);
 
   // Preview Modal state
   const [previewSuratItem, setPreviewSuratItem] = useState<SuratItem | null>(null);
@@ -221,7 +262,8 @@ export default function App() {
     keluar: items.filter((i) => i.tipe === 'KELUAR').length,
     pendingDisposisi: items.filter((i) => i.tipe === 'MASUK' && i.status === 'Menunggu Disposisi').length,
     urgent: items.filter((i) => i.sifat === 'Sangat Segera' || i.sifat === 'Penting').length,
-    suratIzin: suratIzinItems.length
+    suratIzin: suratIzinItems.length,
+    dokumenLain: dokumenLainItems.length
   };
 
   // Handlers
@@ -319,9 +361,20 @@ export default function App() {
     showToast('Data agenda berhasil diekspor ke format CSV / Excel!');
   };
 
-  const handleRestoreData = async (newItems: SuratItem[], newSekolah: IdentitasSekolah) => {
+  const handleRestoreData = async (
+    newItems: SuratItem[],
+    newSekolah: IdentitasSekolah,
+    newSuratIzin?: SuratIzinItem[],
+    newDokumenLain?: DokumenLainItem[]
+  ) => {
     setItems(newItems);
     setSekolah(newSekolah);
+    if (newSuratIzin && Array.isArray(newSuratIzin)) {
+      setSuratIzinItems(newSuratIzin);
+    }
+    if (newDokumenLain && Array.isArray(newDokumenLain)) {
+      setDokumenLainItems(newDokumenLain);
+    }
     showToast('Data berhasil dipulihkan & disinkronkan ke Cloud!');
 
     try {
@@ -329,6 +382,16 @@ export default function App() {
       await saveIdentitasSekolah(newSekolah);
       for (const it of newItems) {
         await saveSuratItem(it);
+      }
+      if (newSuratIzin) {
+        for (const iz of newSuratIzin) {
+          await saveSuratIzinItem(iz);
+        }
+      }
+      if (newDokumenLain) {
+        for (const dok of newDokumenLain) {
+          await saveDokumenLainItem(dok);
+        }
       }
     } catch (err) {
       console.error('Error syncing restored data:', err);
@@ -340,6 +403,7 @@ export default function App() {
   const handleResetToDefault = async () => {
     setItems(INITIAL_SURAT);
     setSuratIzinItems(INITIAL_SURAT_IZIN);
+    setDokumenLainItems(INITIAL_DOKUMEN_LAIN);
     setSekolah(INITIAL_SEKOLAH);
     showToast('Data berhasil diatur ulang ke data contoh bawaan.');
 
@@ -351,6 +415,9 @@ export default function App() {
       }
       for (const iz of INITIAL_SURAT_IZIN) {
         await saveSuratIzinItem(iz);
+      }
+      for (const dok of INITIAL_DOKUMEN_LAIN) {
+        await saveDokumenLainItem(dok);
       }
     } catch (err) {
       console.error('Error resetting cloud data:', err);
@@ -464,6 +531,58 @@ export default function App() {
     }
   };
 
+  // Handlers for Dokumen Lain (Soal, Kisi-Kisi, Modul, dll.)
+  const handleOpenAddDokumenLain = () => {
+    setEditingDokumenLain(null);
+    setIsDokumenLainModalOpen(true);
+  };
+
+  const handleEditDokumenLain = (item: DokumenLainItem) => {
+    setEditingDokumenLain(item);
+    setIsDokumenLainModalOpen(true);
+  };
+
+  const handleSaveDokumenLain = async (savedItem: DokumenLainItem) => {
+    setDokumenLainItems((prev) => {
+      const exists = prev.some((i) => i.id === savedItem.id);
+      if (exists) {
+        return prev.map((i) => (i.id === savedItem.id ? savedItem : i));
+      } else {
+        return [savedItem, ...prev];
+      }
+    });
+    setIsDokumenLainModalOpen(false);
+    showToast(`Dokumen ${savedItem.nomorDokumen} (${savedItem.judul}) tersimpan & disinkronkan ke Cloud!`);
+
+    try {
+      setIsSyncing(true);
+      await saveDokumenLainItem(savedItem);
+    } catch (err) {
+      console.error('Error saving dokumen lain to Firestore:', err);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleDeleteDokumenLain = async (id: string) => {
+    const item = dokumenLainItems.find((i) => i.id === id);
+    if (!item) return;
+
+    if (confirm(`Apakah Anda yakin ingin menghapus arsip ${item.nomorDokumen} (${item.judul})? Data akan terhapus di seluruh komputer.`)) {
+      setDokumenLainItems((prev) => prev.filter((i) => i.id !== id));
+      showToast(`Arsip dokumen ${item.nomorDokumen} berhasil dihapus.`);
+
+      try {
+        setIsSyncing(true);
+        await deleteDokumenLainItem(id);
+      } catch (err) {
+        console.error('Error deleting dokumen lain from Firestore:', err);
+      } finally {
+        setIsSyncing(false);
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex font-sans">
       
@@ -481,6 +600,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenAddModal={handleOpenAddModal}
+        onOpenAddDokumenLain={handleOpenAddDokumenLain}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenKlasifikasi={() => setIsKlasifikasiOpen(true)}
         onExportCsv={handleExportCsv}
@@ -509,8 +629,8 @@ export default function App() {
         {/* Main Content Container */}
         <main className="px-4 sm:px-6 lg:px-8 py-6 w-full flex-1 max-w-7xl mx-auto">
           
-          {/* Operational Stats Summary (tampil jika bukan tab SURAT_IZIN) */}
-          {activeTab !== 'SURAT_IZIN' && (
+          {/* Operational Stats Summary (tampil jika bukan tab SURAT_IZIN atau DOKUMEN_LAINNYA) */}
+          {activeTab !== 'SURAT_IZIN' && activeTab !== 'DOKUMEN_LAINNYA' && (
             <StatSummary
               items={items}
               onFilterChange={(filter) => setActiveTab(filter)}
@@ -518,8 +638,16 @@ export default function App() {
             />
           )}
 
-          {/* View Switch: Surat Izin vs Agenda Surat Masuk/Keluar */}
-          {activeTab === 'SURAT_IZIN' ? (
+          {/* View Switch: Dokumen Lain vs Surat Izin vs Agenda Surat Masuk/Keluar */}
+          {activeTab === 'DOKUMEN_LAINNYA' ? (
+            <DokumenLainView
+              items={dokumenLainItems}
+              onOpenAddModal={handleOpenAddDokumenLain}
+              onEditItem={handleEditDokumenLain}
+              onDeleteItem={handleDeleteDokumenLain}
+              sekolah={sekolah}
+            />
+          ) : activeTab === 'SURAT_IZIN' ? (
             <SuratIzinView
               items={suratIzinItems}
               onOpenAddModal={handleOpenAddSuratIzin}
@@ -632,6 +760,15 @@ export default function App() {
         sekolah={sekolah}
       />
 
+      {/* Modal Tambah / Edit Arsip Dokumen Lainnya */}
+      <DokumenLainModal
+        isOpen={isDokumenLainModalOpen}
+        onClose={() => setIsDokumenLainModalOpen(false)}
+        onSave={handleSaveDokumenLain}
+        initialItem={editingDokumenLain}
+        sekolah={sekolah}
+      />
+
       {/* View Cetak Lembar Disposisi */}
       {printDisposisiItem && (
         <PrintDisposisiView
@@ -659,6 +796,8 @@ export default function App() {
         onRestoreData={handleRestoreData}
         onResetToDefault={handleResetToDefault}
         items={items}
+        suratIzinItems={suratIzinItems}
+        dokumenLainItems={dokumenLainItems}
       />
 
       {/* Modal Referensi Kode Klasifikasi */}

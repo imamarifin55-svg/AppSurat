@@ -10,7 +10,7 @@ import {
   Unsubscribe
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { SuratItem, SuratIzinItem, IdentitasSekolah } from '../types';
+import { SuratItem, SuratIzinItem, IdentitasSekolah, DokumenLainItem } from '../types';
 
 export enum OperationType {
   CREATE = 'create',
@@ -62,6 +62,7 @@ function cleanForFirestore<T extends Record<string, any>>(obj: T): T {
 
 const SURAT_COLLECTION = 'surat';
 const SURAT_IZIN_COLLECTION = 'surat_izin';
+const DOKUMEN_LAIN_COLLECTION = 'dokumen_lain';
 const SEKOLAH_COLLECTION = 'sekolah_config';
 const SEKOLAH_DOC_ID = 'identitas';
 
@@ -119,6 +120,35 @@ export function subscribeSuratIzin(
     },
     (error) => {
       handleFirestoreError(error, OperationType.LIST, SURAT_IZIN_COLLECTION);
+      if (onError) onError(error);
+    }
+  );
+}
+
+/**
+ * Listen to real-time updates for dokumen lainnya (soal, kisi-kisi, modul ajar, dll.)
+ */
+export function subscribeDokumenLain(
+  onData: (items: DokumenLainItem[]) => void,
+  onError?: (err: Error) => void
+): Unsubscribe {
+  const colRef = collection(db, DOKUMEN_LAIN_COLLECTION);
+  return onSnapshot(
+    colRef,
+    (snapshot) => {
+      const list: DokumenLainItem[] = [];
+      snapshot.forEach((docSnap) => {
+        list.push(docSnap.data() as DokumenLainItem);
+      });
+      list.sort((a, b) => {
+        const timeA = new Date(b.createdAt || b.tanggalDokumen).getTime();
+        const timeB = new Date(a.createdAt || a.tanggalDokumen).getTime();
+        return timeA - timeB;
+      });
+      onData(list);
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.LIST, DOKUMEN_LAIN_COLLECTION);
       if (onError) onError(error);
     }
   );
@@ -205,6 +235,35 @@ export async function deleteSuratIzinItem(id: string): Promise<void> {
 }
 
 /**
+ * Save or update a Dokumen Lain item to Firestore
+ */
+export async function saveDokumenLainItem(item: DokumenLainItem): Promise<void> {
+  const path = `${DOKUMEN_LAIN_COLLECTION}/${item.id}`;
+  try {
+    const cleaned = cleanForFirestore(item);
+    const docRef = doc(db, DOKUMEN_LAIN_COLLECTION, item.id);
+    await setDoc(docRef, cleaned, { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
+}
+
+/**
+ * Delete a Dokumen Lain item from Firestore
+ */
+export async function deleteDokumenLainItem(id: string): Promise<void> {
+  const path = `${DOKUMEN_LAIN_COLLECTION}/${id}`;
+  try {
+    const docRef = doc(db, DOKUMEN_LAIN_COLLECTION, id);
+    await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+    throw error;
+  }
+}
+
+/**
  * Save or update school identity to Firestore
  */
 export async function saveIdentitasSekolah(sekolah: IdentitasSekolah): Promise<void> {
@@ -225,7 +284,8 @@ export async function saveIdentitasSekolah(sekolah: IdentitasSekolah): Promise<v
 export async function seedInitialDataIfEmpty(
   initialSurat: SuratItem[],
   initialSuratIzin: SuratIzinItem[],
-  initialSekolah: IdentitasSekolah
+  initialSekolah: IdentitasSekolah,
+  initialDokumenLain?: DokumenLainItem[]
 ): Promise<void> {
   try {
     // Check surat collection
@@ -250,6 +310,20 @@ export async function seedInitialDataIfEmpty(
       }
       await batch.commit();
       console.log('Seeded initial surat_izin collection');
+    }
+
+    // Check dokumen_lain collection
+    if (initialDokumenLain && initialDokumenLain.length > 0) {
+      const dokSnap = await getDocs(collection(db, DOKUMEN_LAIN_COLLECTION));
+      if (dokSnap.empty) {
+        const batch = writeBatch(db);
+        for (const dok of initialDokumenLain) {
+          const ref = doc(db, DOKUMEN_LAIN_COLLECTION, dok.id);
+          batch.set(ref, cleanForFirestore(dok));
+        }
+        await batch.commit();
+        console.log('Seeded initial dokumen_lain collection');
+      }
     }
 
     // Check sekolah configuration
