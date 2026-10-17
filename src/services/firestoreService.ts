@@ -10,7 +10,7 @@ import {
   Unsubscribe
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { SuratItem, SuratIzinItem, IdentitasSekolah, DokumenLainItem } from '../types';
+import { SuratItem, SuratIzinItem, IdentitasSekolah, DokumenLainItem, DokumenTerhapusItem } from '../types';
 
 export enum OperationType {
   CREATE = 'create',
@@ -45,12 +45,19 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   }
 }
 
-// Helper to remove undefined fields because Firestore rejects undefined
+// 700 KB string limit to stay well within Firestore's 1MB (1,048,576 byte) document limit
+const MAX_FIRESTORE_DATA_URL_LENGTH = 700000;
+
+// Helper to remove undefined fields and protect against documents exceeding 1MB
 function cleanForFirestore<T extends Record<string, any>>(obj: T): T {
   const cleaned: any = {};
   for (const [key, value] of Object.entries(obj)) {
     if (value !== undefined) {
-      if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+      if (typeof value === 'string' && (key === 'fileData' || key === 'fileBuktiData') && value.length > MAX_FIRESTORE_DATA_URL_LENGTH) {
+        // Document has large attachment; store marker for Firestore while complete file stays in IndexedDB
+        cleaned[key] = '[STORED_IN_INDEXEDDB_LOCAL]';
+        cleaned['hasLocalAttachment'] = true;
+      } else if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
         cleaned[key] = cleanForFirestore(value);
       } else {
         cleaned[key] = value;
@@ -63,6 +70,7 @@ function cleanForFirestore<T extends Record<string, any>>(obj: T): T {
 const SURAT_COLLECTION = 'surat';
 const SURAT_IZIN_COLLECTION = 'surat_izin';
 const DOKUMEN_LAIN_COLLECTION = 'dokumen_lain';
+const DOKUMEN_TERHAPUS_COLLECTION = 'dokumen_terhapus';
 const SEKOLAH_COLLECTION = 'sekolah_config';
 const SEKOLAH_DOC_ID = 'identitas';
 
@@ -81,7 +89,6 @@ export function subscribeSurat(
       snapshot.forEach((docSnap) => {
         list.push(docSnap.data() as SuratItem);
       });
-      // Sort by tanggalSurat desc or createdAt desc
       list.sort((a, b) => {
         const timeA = new Date(b.createdAt || b.tanggalSurat).getTime();
         const timeB = new Date(a.createdAt || a.tanggalSurat).getTime();
@@ -149,6 +156,31 @@ export function subscribeDokumenLain(
     },
     (error) => {
       handleFirestoreError(error, OperationType.LIST, DOKUMEN_LAIN_COLLECTION);
+      if (onError) onError(error);
+    }
+  );
+}
+
+/**
+ * Listen to real-time updates for deleted documents (Recycle Bin / Kotak Sampah)
+ */
+export function subscribeDokumenTerhapus(
+  onData: (items: DokumenTerhapusItem[]) => void,
+  onError?: (err: Error) => void
+): Unsubscribe {
+  const colRef = collection(db, DOKUMEN_TERHAPUS_COLLECTION);
+  return onSnapshot(
+    colRef,
+    (snapshot) => {
+      const list: DokumenTerhapusItem[] = [];
+      snapshot.forEach((docSnap) => {
+        list.push(docSnap.data() as DokumenTerhapusItem);
+      });
+      list.sort((a, b) => new Date(b.dihapusPada).getTime() - new Date(a.dihapusPada).getTime());
+      onData(list);
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.LIST, DOKUMEN_TERHAPUS_COLLECTION);
       if (onError) onError(error);
     }
   );
@@ -256,6 +288,35 @@ export async function deleteDokumenLainItem(id: string): Promise<void> {
   const path = `${DOKUMEN_LAIN_COLLECTION}/${id}`;
   try {
     const docRef = doc(db, DOKUMEN_LAIN_COLLECTION, id);
+    await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+    throw error;
+  }
+}
+
+/**
+ * Save or update a Dokumen Terhapus item to Firestore
+ */
+export async function saveDokumenTerhapusItem(item: DokumenTerhapusItem): Promise<void> {
+  const path = `${DOKUMEN_TERHAPUS_COLLECTION}/${item.id}`;
+  try {
+    const cleaned = cleanForFirestore(item);
+    const docRef = doc(db, DOKUMEN_TERHAPUS_COLLECTION, item.id);
+    await setDoc(docRef, cleaned, { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
+}
+
+/**
+ * Delete a Dokumen Terhapus item from Firestore (permanent deletion)
+ */
+export async function deleteDokumenTerhapusItem(id: string): Promise<void> {
+  const path = `${DOKUMEN_TERHAPUS_COLLECTION}/${id}`;
+  try {
+    const docRef = doc(db, DOKUMEN_TERHAPUS_COLLECTION, id);
     await deleteDoc(docRef);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);

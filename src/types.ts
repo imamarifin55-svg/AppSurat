@@ -127,3 +127,23 @@ export interface KodeKlasifikasi {
   kategori: string;
   deskripsi: string;
 }
+
+export type TipeItemTerhapus = 'SURAT' | 'SURAT_IZIN' | 'DOKUMEN_LAIN';
+
+export interface DokumenTerhapusItem {
+  id: string; // e.g. "trash-xxx"
+  originalId: string;
+  tipeItem: TipeItemTerhapus;
+  judul: string;
+  nomor: string;
+  kategori: string;
+  tanggalDokumen: string;
+  dihapusPada: string; // ISO string
+  alasanHapus?: string;
+  dihapusOleh?: string;
+  fileName?: string;
+  fileData?: string;
+  fileType?: string;
+  fileSize?: number;
+  originalData: SuratItem | SuratIzinItem | DokumenLainItem;
+}

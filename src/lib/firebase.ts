@@ -32,7 +32,7 @@ export async function testFirestoreConnection(): Promise<boolean> {
   try {
     const pingPromise = getDocFromServer(doc(db, 'test', 'connection'));
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Connection check timeout')), 8000)
+      setTimeout(() => reject(new Error('Connection check timeout')), 3500)
     );
     await Promise.race([pingPromise, timeoutPromise]);
     return true;

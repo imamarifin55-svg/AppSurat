@@ -86,6 +86,7 @@ export const DokumenLainModal: React.FC<DokumenLainModalProps> = ({
   const [fileSize, setFileSize] = useState<number | undefined>();
   const [isDragOver, setIsDragOver] = useState(false);
   const [showQuickPreview, setShowQuickPreview] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -224,13 +225,14 @@ export const DokumenLainModal: React.FC<DokumenLainModalProps> = ({
     e.preventDefault();
 
     if (!judul.trim()) {
-      alert('Judul Dokumen wajib diisi.');
+      setValidationError('Judul Dokumen wajib diisi.');
       return;
     }
     if (!penyusun.trim()) {
-      alert('Nama Guru / Tim Penyusun / Penanggung Jawab wajib diisi.');
+      setValidationError('Nama Guru / Tim Penyusun / Penanggung Jawab wajib diisi.');
       return;
     }
+    setValidationError(null);
 
     const itemToSave: DokumenLainItem = {
       id: initialItem?.id || `dok-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,

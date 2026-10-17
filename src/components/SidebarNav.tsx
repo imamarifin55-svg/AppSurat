@@ -15,7 +15,8 @@ import {
   MapPin,
   X,
   UserCheck,
-  FolderArchive
+  FolderArchive,
+  Trash2
 } from 'lucide-react';
 
 interface SidebarNavProps {
@@ -38,6 +39,7 @@ interface SidebarNavProps {
     urgent: number;
     suratIzin?: number;
     dokumenLain?: number;
+    trash?: number;
   };
 }
 
@@ -99,6 +101,13 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
       icon: AlertTriangle,
       count: itemsCount.urgent,
       badgeHighlight: itemsCount.urgent > 0
+    },
+    {
+      id: 'TRASH',
+      label: 'Dokumen Terhapus',
+      icon: Trash2,
+      count: itemsCount.trash ?? 0,
+      badgeHighlight: false
     }
   ];
 

@@ -58,12 +58,12 @@ export const SuratModal: React.FC<SuratModalProps> = ({
   const [penandatangan, setPenandatangan] = useState(sekolah.namaKepalaSekolah);
   const [lokasiArsipFisik, setLokasiArsipFisik] = useState('Ordner A / Rak 1');
 
-  // State untuk Berkas Unggahan
   const [fileData, setFileData] = useState<string | undefined>(undefined);
   const [fileType, setFileType] = useState<string | undefined>(undefined);
   const [fileSize, setFileSize] = useState<number | undefined>(undefined);
   const [isDragging, setIsDragging] = useState(false);
   const [showQuickPreview, setShowQuickPreview] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Load initial data when modal opens
@@ -167,14 +167,11 @@ export const SuratModal: React.FC<SuratModalProps> = ({
       };
       reader.readAsDataURL(file);
     } else {
-      // PDF or other documents
-      if (file.size > 2 * 1024 * 1024) {
-        alert('Perhatian: Ukuran file PDF disarankan di bawah 2MB agar sinkronisasi cloud tetap lancar.');
-      }
+      // PDF, Word, Excel, PowerPoint, or any document
       const reader = new FileReader();
       reader.onload = () => {
         setFileData(reader.result as string);
-        setFileType(file.type);
+        setFileType(file.type || 'application/octet-stream');
         setFileSize(file.size);
         if (!lampiranNama) {
           setLampiranNama(file.name);
@@ -272,9 +269,10 @@ export const SuratModal: React.FC<SuratModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!noAgenda.trim() || !noSurat.trim() || !perihal.trim()) {
-      alert('Mohon lengkapi Nomor Agenda, Nomor Surat, dan Perihal!');
+      setValidationError('Mohon lengkapi Nomor Agenda, Nomor Surat, dan Perihal!');
       return;
     }
+    setValidationError(null);
 
     const payload: SuratItem = {
       id: initialItem ? initialItem.id : `${tipe === 'MASUK' ? 'sm' : 'sk'}-${Date.now()}`,
@@ -338,6 +336,13 @@ export const SuratModal: React.FC<SuratModalProps> = ({
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="overflow-y-auto px-6 py-5 space-y-4 flex-1">
           
+          {validationError && (
+            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-semibold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+              <span>{validationError}</span>
+            </div>
+          )}
+
           {/* Tipe Selector Tab (if new item) */}
           {!initialItem && (
             <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
@@ -602,7 +607,7 @@ export const SuratModal: React.FC<SuratModalProps> = ({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="application/pdf,image/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                accept="*/*,application/pdf,image/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.zip,.rar,.7z"
                 onChange={handleFileInputChange}
                 className="hidden"
               />
